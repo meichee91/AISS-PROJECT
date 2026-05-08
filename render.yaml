@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: aiss-project
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CATALOG_SYNC_ENABLED
+        value: "false"
+      - key: CATALOG_SYNC_ON_STARTUP
+        value: "false"
+      - key: CATALOG_SYNC_INTERVAL_MINUTES
+        value: "4320"
+      - key: SMTP_HOST
+        value: smtp-mail.outlook.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SYNC_NOTIFY_TO
+        value: chee_1201@hotmail.com
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SYNC_NOTIFY_FROM
+        sync: false

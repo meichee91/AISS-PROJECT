@@ -1,0 +1,3081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Sales Support</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b31217'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='34'%3E%F0%9F%A4%96%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --panel-soft: #fff6f7;
+      --border: #e7e9ee;
+      --text: #161a22;
+      --muted: #6a7180;
+      --red: #b31217;
+      --red-deep: #7d1115;
+      --red-soft: #ffe7ea;
+      --green: #17844a;
+      --shadow: 0 10px 24px rgba(18, 23, 40, 0.06);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 8% 6%, #fff2f3 0%, #f7f8fa 40%, #f2f4f7 100%);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(320px, 370px) minmax(0, 1fr);
+      min-height: 100vh;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .left {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(130deg, #fff, #fff6f7);
+    }
+
+    .bot {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--red);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      position: relative;
+      line-height: 1;
+    }
+
+    .bot::after { display: none; }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .last-updated {
+      font-size: 0.68rem;
+      color: #8a93a3;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .left-scroll {
+      overflow: auto;
+      min-height: 0;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px;
+      background: #fff;
+    }
+
+    .flow-card {
+      position: sticky;
+      top: 10px;
+      left: auto;
+      width: auto;
+      z-index: 4;
+      box-shadow: 0 10px 24px rgba(30, 42, 62, 0.1);
+    }
+
+    .card h2, .card h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+    }
+
+    .tiny {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .flow {
+      border: 1px solid #f1d6da;
+      background: linear-gradient(140deg, #fffdfd, #fff5f6);
+      position: static;
+      top: auto;
+    }
+
+    .flow-wrap {
+      position: relative;
+      padding: 7px 6px 2px;
+    }
+
+    .flow-line {
+      position: absolute;
+      left: 29px;
+      right: 29px;
+      top: 22px;
+      height: 4px;
+      border-radius: 999px;
+      background: #f2d9dd;
+      overflow: hidden;
+    }
+
+    .flow-progress {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #b31217, #dc4d52);
+      transition: width 0.2s ease;
+    }
+
+    .flow-steps {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .flow-step {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid #f0cad0;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 0.88rem;
+      transition: all 0.18s;
+    }
+
+    .flow-step.active {
+      border-color: var(--red);
+      background: #fff6f7;
+      box-shadow: 0 0 0 3px rgba(179, 18, 23, 0.13);
+      transform: translateY(-1px);
+    }
+
+    .flow-step.done {
+      border-color: #d94e54;
+      background: #ffe9ec;
+    }
+
+    .flow-labels {
+      margin-top: 7px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .flow-label {
+      text-align: center;
+      font-size: 0.62rem;
+      color: #7d8392;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
+    .flow-label.active { color: #8d1519; }
+    .flow-label.done { color: #b73e44; }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin: 8px 0 5px;
+      font-weight: 600;
+      color: #2f3542;
+    }
+
+    input, select, textarea, button {
+      font: inherit;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #d8dce4;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 0.88rem;
+      color: #202735;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    textarea {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(179, 18, 23, 0.12);
+    }
+
+    .section-tag {
+      margin: 14px 0 5px;
+      font-size: 0.74rem;
+      color: var(--red-deep);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 700;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 11px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      padding: 9px 11px;
+      font-weight: 600;
+      font-size: 0.83rem;
+    }
+
+    .btn-primary {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #991016; }
+
+    .btn-secondary {
+      background: #f2f4f8;
+      color: #263041;
+      border: 1px solid #d9deea;
+    }
+
+    .btn-secondary:hover { background: #eaedf4; }
+
+    .photo-zone {
+      margin-top: 8px;
+      border: 1px dashed #d2d8e2;
+      border-radius: 10px;
+      background: #fafbfe;
+      padding: 8px;
+      min-height: 70px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .photo-zone.drag {
+      border-color: var(--red);
+      background: #fff1f3;
+    }
+
+    .photo-empty {
+      font-size: 0.75rem;
+      color: #707887;
+      text-align: center;
+      min-height: 52px;
+      display: grid;
+      place-items: center;
+      line-height: 1.35;
+    }
+
+    .photo-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+      gap: 7px;
+    }
+
+    .photo-item {
+      border: 1px solid #e2e7f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .photo-item img {
+      width: 100%;
+      height: 72px;
+      object-fit: cover;
+      display: block;
+      border-bottom: 1px solid #eef2f7;
+    }
+
+    .photo-name {
+      font-size: 0.68rem;
+      color: #333b48;
+      line-height: 1.3;
+      padding: 5px 6px;
+      word-break: break-word;
+      min-height: 28px;
+    }
+
+    .photo-item button {
+      width: calc(100% - 10px);
+      margin: 0 5px 5px;
+      padding: 5px 6px;
+      font-size: 0.66rem;
+    }
+
+    .pdf-history {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .history-item {
+      border: 1px solid #e4e8ef;
+      border-radius: 9px;
+      padding: 8px;
+      background: #fcfcfe;
+    }
+
+    .h-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #252c39;
+      word-break: break-word;
+    }
+
+    .h-time {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .h-actions {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .h-actions button {
+      padding: 6px 7px;
+      font-size: 0.7rem;
+    }
+
+    .share-panel {
+      margin-top: 10px;
+      border: 1px solid #dbe3ef;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcff;
+      display: none;
+    }
+
+    .share-panel.active {
+      display: block;
+    }
+
+    .share-title {
+      margin: 0 0 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #252c39;
+    }
+
+    .share-options {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .share-icon-btn {
+      min-width: 52px;
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .share-icon-btn svg {
+      width: 24px;
+      height: 24px;
+      display: block;
+    }
+
+    .share-note {
+      margin: 8px 0 0;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .right {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 300px;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .recommendation {
+      min-height: 0;
+      overflow: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rec-head {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 9px;
+    }
+
+    .rec-head h2 {
+      margin: 0;
+      font-size: 1.03rem;
+    }
+
+    .rec-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--green);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .rec-note {
+      margin: 3px 0 0;
+      color: #6b2230;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .rec-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .rec-block {
+      border: 1px solid #e8ebf2;
+      border-radius: 11px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .rec-block h3 {
+      margin: 0 0 7px;
+      font-size: 0.82rem;
+      letter-spacing: 0.45px;
+      text-transform: uppercase;
+      color: var(--red-deep);
+    }
+
+    .rec-text {
+      margin: 0;
+      color: #222a37;
+      font-size: 0.88rem;
+      line-height: 1.53;
+      white-space: pre-wrap;
+    }
+
+    .catalog-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .catalog-item {
+      border: 1px solid #e5e9f1;
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #fcfdff;
+    }
+
+    .catalog-item a {
+      color: #8d1519;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .catalog-item a:hover {
+      text-decoration: underline;
+    }
+
+    .catalog-meta {
+      margin-top: 4px;
+      font-size: 0.76rem;
+      color: #59606f;
+      line-height: 1.45;
+    }
+
+    .input-photo {
+      margin-top: 8px;
+      border-top: 1px dashed #e4e8f1;
+      padding-top: 8px;
+    }
+
+    .input-photo-title {
+      font-size: 0.73rem;
+      color: #7f1d22;
+      font-weight: 700;
+      letter-spacing: 0.35px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .input-photo-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 7px;
+    }
+
+    .input-photo-card {
+      border: 1px solid #e3e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .input-photo-card img {
+      width: 100%;
+      height: 74px;
+      object-fit: cover;
+      display: block;
+      border-bottom: 1px solid #eef1f6;
+    }
+
+    .input-photo-name {
+      padding: 5px 6px;
+      font-size: 0.66rem;
+      color: #36404f;
+      line-height: 1.3;
+      min-height: 28px;
+      word-break: break-word;
+    }
+
+    .followup {
+      border: 1px solid #f0d4d8;
+      border-radius: 11px;
+      background: var(--panel-soft);
+      padding: 10px;
+    }
+
+    .followup h3 {
+      margin: 0 0 7px;
+      font-size: 0.85rem;
+      color: #77171c;
+    }
+
+    .followup-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+      margin-top: 7px;
+    }
+
+    .f-item {
+      border: 1px solid #efcfd4;
+      border-radius: 9px;
+      background: #fff;
+      padding: 8px;
+    }
+
+    .f-q {
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #3c2b2e;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .f-no {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffd8dc;
+      color: #711217;
+      display: inline-grid;
+      place-items: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .rec-actions {
+      padding-top: 7px;
+      border-top: 1px solid var(--border);
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rec-feedback {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-width: 0;
+      flex: 1 1 520px;
+    }
+
+    .feedback-title {
+      font-size: 0.76rem;
+      color: #59606f;
+      font-weight: 600;
+    }
+
+    .fb-btn {
+      min-width: 110px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px solid #d9dfeb;
+      background: #fff;
+      cursor: pointer;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 12px;
+      color: #334155;
+      font-weight: 600;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+
+    .fb-btn:hover {
+      transform: translateY(-1px);
+      border-color: #c5cfde;
+    }
+
+    .fb-btn svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+
+    .fb-btn.good svg {
+      color: #0f766e;
+    }
+
+    .fb-btn.bad svg {
+      color: #b45309;
+    }
+
+    .fb-label {
+      font-size: 0.8rem;
+    }
+
+    .fb-btn.active {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(179, 18, 23, 0.12);
+      background: #fff5f6;
+    }
+
+    .fb-reason {
+      flex: 1 1 180px;
+      min-width: 160px;
+    }
+
+    .fb-submit {
+      padding: 8px 10px;
+      font-size: 0.75rem;
+    }
+
+    .rec-export-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .feedback-panel {
+      margin-top: 10px;
+      border: 1px solid #e3e7ef;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fbfcff;
+      display: none;
+    }
+
+    .feedback-panel.active {
+      display: block;
+    }
+
+    .feedback-helper {
+      flex: 1 1 100%;
+      font-size: 0.74rem;
+      color: #6a7180;
+    }
+
+    .inline-check {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid #ead3d8;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #fff8f8, #fff2f4);
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #8d1519;
+      line-height: 1.35;
+    }
+
+    .inline-check input {
+      width: auto;
+      margin: 0;
+      accent-color: var(--red);
+      transform: scale(1.3);
+      flex: 0 0 auto;
+    }
+
+    .inline-check span {
+      display: block;
+      flex: 1 1 auto;
+    }
+
+    .inline-check small {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #6a7180;
+    }
+
+    .inline-check.disabled {
+      border-style: dashed;
+      border-color: #d7dce5;
+      background: linear-gradient(145deg, #f7f8fb, #f1f3f7);
+      color: #687181;
+      cursor: not-allowed;
+    }
+
+    .inline-check.disabled input {
+      accent-color: #b5bcc8;
+      cursor: not-allowed;
+    }
+
+    .inline-check.disabled small {
+      color: #8790a0;
+    }
+
+    .empty {
+      margin: 18px auto;
+      width: 100%;
+      max-width: 760px;
+      border: 1px dashed #d8dce7;
+      border-radius: 12px;
+      background: #fcfdff;
+      padding: 22px;
+      text-align: center;
+    }
+
+    .empty h3 {
+      margin: 0 0 7px;
+      font-size: 0.98rem;
+      color: #2b3341;
+    }
+
+    .empty p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: minmax(0, 1.58fr) minmax(210px, 0.78fr);
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .chat, .activity {
+      display: grid;
+      min-height: 0;
+      overflow: hidden;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .activity {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .p-title {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #232a37;
+      background: #fff;
+    }
+
+    .msgs, .acts {
+      overflow: auto;
+      min-height: 0;
+      padding: 9px;
+      background: #fff;
+    }
+
+    .bubble {
+      margin-bottom: 8px;
+      padding: 8px 9px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      line-height: 1.43;
+      max-width: 88%;
+      white-space: pre-wrap;
+    }
+
+    .bubble.user {
+      margin-left: auto;
+      background: #ffe9ec;
+      border: 1px solid #ffd0d6;
+    }
+
+    .bubble.ai {
+      background: #f2f5fb;
+      border: 1px solid #e2e7f3;
+    }
+
+    .chat-input {
+      border-top: 1px solid var(--border);
+      background: #fff;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .chat-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .drop-hint {
+      border: 1px dashed #d6dce7;
+      border-radius: 8px;
+      padding: 5px 7px;
+      background: #fafbfd;
+      color: #5d6677;
+      font-size: 0.7rem;
+    }
+
+    .chat.drag .drop-hint {
+      border-color: var(--red);
+      background: #fff1f3;
+      color: #7b171b;
+    }
+
+    .cfiles {
+      border: 1px solid #e7ebf2;
+      border-radius: 8px;
+      padding: 5px;
+      background: #fcfdff;
+      max-height: 78px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .cfiles-empty {
+      font-size: 0.69rem;
+      color: #747d8d;
+    }
+
+    .cfile {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 4px;
+      border: 1px solid #edf1f7;
+      border-radius: 7px;
+      padding: 4px 5px;
+      background: #fff;
+      align-items: center;
+    }
+
+    .cmeta {
+      min-width: 0;
+      font-size: 0.67rem;
+      color: #36404f;
+      line-height: 1.27;
+      word-break: break-word;
+    }
+
+    .cmeta strong {
+      display: block;
+      font-size: 0.68rem;
+      color: #1f2735;
+    }
+
+    .cfile button {
+      font-size: 0.63rem;
+      padding: 4px 6px;
+    }
+
+    .chat-send {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+    }
+
+    .act-item {
+      border: 1px solid #e9edf4;
+      border-radius: 8px;
+      padding: 7px;
+      margin-bottom: 7px;
+      background: #fafbfc;
+    }
+
+    .act-item strong {
+      display: block;
+      font-size: 0.74rem;
+      margin-bottom: 2px;
+      color: #222a37;
+    }
+
+    .act-item div {
+      font-size: 0.72rem;
+      color: #3f4758;
+      line-height: 1.34;
+    }
+
+    .act-item span {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.67rem;
+      color: #7a8191;
+    }
+
+    .activity .p-title {
+      font-size: 0.79rem;
+      padding: 9px 10px;
+    }
+
+    .activity .acts {
+      padding: 8px;
+    }
+
+    .thinking-card {
+      border: 1px solid #f1d6da;
+      border-radius: 12px;
+      padding: 18px;
+      background: linear-gradient(135deg, #fff, #fff6f7);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #303747;
+      box-shadow: 0 8px 22px rgba(30, 42, 62, 0.08);
+    }
+
+    .thinking-bot {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--red);
+      color: #fff;
+      font-size: 25px;
+      animation: bot-think 1.1s ease-in-out infinite;
+      flex: 0 0 auto;
+    }
+
+    .thinking-title {
+      margin: 0 0 4px;
+      font-weight: 700;
+      color: #202735;
+    }
+
+    .thinking-text {
+      margin: 0;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    @keyframes bot-think {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      35% { transform: translateY(-3px) rotate(-2deg); }
+      70% { transform: translateY(1px) rotate(2deg); }
+    }
+
+    @media (max-width: 1080px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-card {
+        position: sticky;
+        top: 8px;
+        left: auto;
+        width: auto;
+      }
+
+      .right {
+        grid-template-rows: minmax(430px, auto) 350px;
+      }
+
+      .bottom {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel left">
+      <div class="brand">
+        <div class="bot">🤖</div>
+        <div>
+          <div class="brand-title">
+            <h1>AI Sales Support</h1>
+            <span id="lastUpdatedText" class="last-updated">Website update: --</span>
+          </div>
+          <p>Industrial power transmission assistant</p>
+        </div>
+      </div>
+
+      <div class="left-scroll">
+        <section class="card flow flow-card">
+          <h2>Visual Flow</h2>
+          <div class="flow-wrap">
+            <div class="flow-line"><div id="flowProgress" class="flow-progress"></div></div>
+            <div class="flow-steps">
+              <div class="flow-step active" data-step="1" title="Category">📦</div>
+              <div class="flow-step" data-step="2" title="Form + Upload">📝</div>
+              <div class="flow-step" data-step="3" title="Submit">✅</div>
+              <div class="flow-step" data-step="4" title="Review">🤖</div>
+              <div class="flow-step" data-step="5" title="Feedback">💬</div>
+              <div class="flow-step" data-step="6" title="PDF / Share">📄</div>
+            </div>
+            <div class="flow-labels">
+              <div class="flow-label active" data-label="1">Category</div>
+              <div class="flow-label" data-label="2">Form + Upload</div>
+              <div class="flow-label" data-label="3">Submit</div>
+              <div class="flow-label" data-label="4">Review</div>
+              <div class="flow-label" data-label="5">Feedback</div>
+              <div class="flow-label" data-label="6">PDF/Share</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>User Information</h2>
+          <label for="userNameInput">User</label>
+          <input id="userNameInput" type="text" placeholder="Enter user name" />
+          <label class="inline-check disabled" for="referHistoricalInputFuture">
+            <input id="referHistoricalInputFuture" type="checkbox" disabled />
+            <span>
+              AI refer to historical good cases
+              <small>Future feature. This will be reactivated later so AI can compare with similar successful past cases.</small>
+            </span>
+          </label>
+        </section>
+
+        <section class="card">
+          <h2>Industry</h2>
+          <label for="industrySelect">Choose industry</label>
+          <select id="industrySelect">
+            <option value="">Select industry</option>
+            <option value="NA">NA</option>
+            <option value="Food & Beverage">Food & Beverage</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Manufacturing">Manufacturing</option>
+            <option value="Mining & Quarry">Mining & Quarry</option>
+            <option value="Palm Oil / Agriculture">Palm Oil / Agriculture</option>
+            <option value="Water Treatment">Water Treatment</option>
+            <option value="HVAC / Building Services">HVAC / Building Services</option>
+            <option value="Logistics / Conveyor">Logistics / Conveyor</option>
+            <option value="Oil & Gas">Oil & Gas</option>
+            <option value="Marine">Marine</option>
+            <option value="Construction">Construction</option>
+            <option value="Automotive">Automotive</option>
+          </select>
+        </section>
+
+        <section class="card">
+          <h2>Product Category</h2>
+          <label for="categorySelect">Choose category</label>
+          <select id="categorySelect">
+            <option value="">Select product category</option>
+          </select>
+          <p id="categoryHint" class="tiny">Select one category to load the matching input form.</p>
+        </section>
+
+        <section class="card">
+          <h2>Requirement Form</h2>
+          <p class="tiny">Fill known details. Unknown dropdown values can use NA.</p>
+          <form id="reqForm"></form>
+        </section>
+
+        <section class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <h3 style="margin:0;">PDF History</h3>
+            <button id="clearHistoryBtn" class="btn-secondary" type="button" style="padding:6px 8px;font-size:0.72rem;">Clear All</button>
+          </div>
+          <p class="tiny">Generated files with download/share/delete.</p>
+          <div id="historyList" class="pdf-history">
+            <p class="tiny">No PDF generated yet.</p>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <main class="right">
+      <section class="panel recommendation">
+        <div class="rec-head">
+          <h2>Sales Support Analysis and Recommendation</h2>
+          <p>Internal analysis and recommendation for expert verification before customer sharing.</p>
+        </div>
+
+        <div id="recContent" class="empty">
+          <h3>Ready to analyze</h3>
+          <p>📦 Category → 📝 Form + 📸 Upload → ✅ Submit → 🤖 Review → 📄 PDF/Share</p>
+        </div>
+
+        <div id="followupBox" class="followup" style="display:none;"></div>
+
+        <div class="btn-row rec-actions">
+          <div class="rec-export-actions">
+            <button id="pdfBtn" class="btn-secondary" type="button">[PDF] Generate PDF</button>
+            <button id="shareBtn" class="btn-primary" type="button">Share</button>
+          </div>
+        </div>
+        <div id="feedbackPanel" class="feedback-panel" aria-live="polite">
+          <div class="feedback-title">Rate this answer</div>
+          <div class="rec-feedback">
+            <button id="fbGoodBtn" class="fb-btn good" type="button" title="Good" aria-label="Good answer">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7.5 10.5H5a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h2.5m0-9.5V20m0-9.5 4-6A2 2 0 0 1 13.2 3h.3A1.5 1.5 0 0 1 15 4.5V8h3.7a2 2 0 0 1 2 2.4l-1.2 6A2 2 0 0 1 17.54 18H7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="fb-label">Good</span>
+            </button>
+            <button id="fbBadBtn" class="fb-btn bad" type="button" title="Needs improvement" aria-label="Needs improvement">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M16.5 13.5H19a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2.5m0 9.5V4m0 9.5-4 6A2 2 0 0 1 10.8 21h-.3A1.5 1.5 0 0 1 9 19.5V16H5.3a2 2 0 0 1-2-2.4l1.2-6A2 2 0 0 1 6.46 6H16.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="fb-label">Needs work</span>
+            </button>
+            <textarea id="feedbackReason" class="fb-reason" style="display:none;" placeholder="Tell us what was wrong, missing, or should be improved"></textarea>
+            <div id="feedbackHelper" class="feedback-helper">Choose Good or Needs work before PDF or Share. Needs work requires feedback.</div>
+          </div>
+        </div>
+        <div id="sharePanel" class="share-panel" aria-live="polite">
+          <p class="share-title">Share recommendation</p>
+          <div class="share-options">
+            <button id="nativeShareBtn" class="btn-primary" type="button">Share PDF</button>
+            <button id="whatsappShareBtn" class="btn-secondary share-icon-btn" type="button" title="Share to WhatsApp" aria-label="Share to WhatsApp">
+              <svg viewBox="0 0 32 32" aria-hidden="true">
+                <circle cx="16" cy="16" r="13" fill="#25D366"/>
+                <path d="M11.5 24l1.1-4A7.8 7.8 0 1 1 16 23.8c-1.2 0-2.4-.3-3.5-.8L11.5 24Z" fill="#fff"/>
+                <path d="M20.2 18.2c-.2-.1-1.3-.6-1.4-.7-.2-.1-.3-.1-.4.1-.1.2-.5.7-.6.8-.1.1-.2.2-.4.1a6.1 6.1 0 0 1-3-2.6c-.2-.2 0-.3.1-.4.1-.1.2-.3.4-.4.1-.1.1-.2.2-.3 0-.1 0-.2 0-.3s-.4-1-.6-1.4c-.2-.4-.3-.3-.4-.3h-.4c-.1 0-.3 0-.5.2s-.6.6-.6 1.5.7 1.8.8 2c.1.1 1.4 2.2 3.4 3 .5.2 1 .4 1.3.5.6.2 1.2.1 1.7.1.5-.1 1.3-.6 1.4-1.2.2-.6.2-1 .1-1.1-.1-.1-.2-.1-.4-.2Z" fill="#25D366"/>
+              </svg>
+            </button>
+            <button id="emailShareBtn" class="btn-secondary share-icon-btn" type="button" title="Share by Email" aria-label="Share by Email">
+              <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <rect x="4" y="7" width="24" height="18" rx="5" fill="#EEF2FF" stroke="#7C3AED" stroke-width="1.8"/>
+                <path d="M8 11.5 15 17a1.7 1.7 0 0 0 2 0l7-5.5" stroke="#7C3AED" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8.5 22 14 17.6M23.5 22 18 17.6" stroke="#A78BFA" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button id="closeShareBtn" class="btn-secondary" type="button">Close</button>
+          </div>
+          <p id="shareNote" class="share-note"></p>
+        </div>
+      </section>
+
+      <section class="bottom">
+        <section class="panel chat" id="chatPanel">
+          <div class="p-title">Support Chat</div>
+          <div id="chatMsgs" class="msgs"></div>
+
+          <div class="chat-input">
+            <div class="chat-tools">
+              <button id="chatAttachBtn" class="btn-secondary" type="button">Attach Photo/Document</button>
+              <input id="chatFileInput" type="file" multiple style="display:none;" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.json,.xml" />
+              <span class="tiny">Upload or drag files into chat panel.</span>
+            </div>
+            <div class="drop-hint">Drop photo/document here to attach for re-analysis.</div>
+            <div id="chatFiles" class="cfiles">
+              <div class="cfiles-empty">No chat attachment selected.</div>
+            </div>
+            <div class="chat-send">
+              <input id="chatInput" type="text" placeholder="Add extra issue details, checks, constraints..." />
+              <button id="chatSendBtn" class="btn-primary" type="button">Send</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel activity">
+          <div class="p-title">Support Activity</div>
+          <div id="activityList" class="acts"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const categories = {
+      Coupling: {
+        short: "coupling",
+        icon: "⚙️",
+        brands: ["Regal Rexnord", "SKF", "Lovejoy", "DODGE", "KTR", "Martin", "NIS"],
+        fields: [
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, compressor" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. broken, noise, replacement, upgrade" },
+          { id: "existing", label: "Existing brand / model", type: "text", placeholder: "If any" },
+          { id: "type", label: "Coupling type", type: "select", options: ["Gear", "Grid", "Jaw", "Tyre", "Disc", "NA"] },
+          { section: "Operating Conditions" },
+          { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
+          { id: "speed", label: "Speed (RPM)", type: "number", placeholder: "Enter RPM" },
+          { id: "environment", label: "Environment", type: "select", options: ["Outdoor", "Dust", "Oil", "Clean", "NA"] },
+          { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
+          { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
+          { id: "failureFrequency", label: "Failure frequency", type: "select", options: ["Often", "Sometimes", "Rare", "NA"] },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+        ],
+        followups: [
+          "Did issue happen at startup, steady run, or shock loading?",
+          "Any recent alignment or installation change before failure started?",
+          "Which side fails first: driver side, driven side, or both?"
+        ]
+      },
+      Belt: {
+        short: "belt",
+        icon: "🟫",
+        brands: ["Optibelt", "NIS", "Fenner Drives", "Habasit", "Bando"],
+        fields: [
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, fan, blower" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. slip, noise, break, wear" },
+          { id: "existing", label: "Existing brand / belt code", type: "text", placeholder: "If any" },
+          { id: "type", label: "Belt type", type: "select", options: ["V", "Timing", "Flat", "Poly-V", "NA"] },
+          { section: "Operating Conditions" },
+          { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
+          { id: "speed", label: "Speed (RPM)", type: "number", placeholder: "Enter RPM" },
+          { id: "environment", label: "Environment", type: "select", options: ["Dust", "Oil", "Heat", "Outdoor", "Clean", "NA"] },
+          { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
+          { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
+          { id: "pulleyCondition", label: "Pulley condition", type: "select", options: ["New", "Worn", "NA"] },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+        ],
+        followups: [
+          "When does slip/noise happen most: startup, full load, or after heating up?",
+          "Was tension/alignment rechecked after installation run-in?",
+          "Any sudden load spike, jam, or stop-start cycle in process?"
+        ]
+      },
+      Chain: {
+        short: "chain",
+        icon: "⛓️",
+        brands: ["DID", "Tsubak", "NIS", "SKF", "Sugiyama", "Tokuno", "SSM", "BSN", "Martin"],
+        fields: [
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, packaging, lifting" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. elongation, break, noise, wear" },
+          { id: "existing", label: "Existing brand / chain size", type: "text", placeholder: "If any" },
+          { id: "type", label: "Chain type", type: "select", options: ["Roller", "Conveyor", "Leaf", "NA"] },
+          { section: "Operating Conditions" },
+          { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
+          { id: "speed", label: "Speed (RPM)", type: "number", placeholder: "Enter RPM" },
+          { id: "environment", label: "Environment", type: "select", options: ["Dust", "Oil", "Outdoor", "Clean", "NA"] },
+          { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
+          { id: "sprocketCondition", label: "Sprocket condition", type: "select", options: ["New", "Worn", "NA"] },
+          { id: "lubrication", label: "Lubrication condition", type: "select", options: ["Good", "Poor", "None", "NA"] },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+        ],
+        followups: [
+          "Where is wear highest now: pin-bush, roller, plate, or sprocket teeth?",
+          "How often is lubrication done and by what method?",
+          "Any chain jump, uneven tension, or hooking on sprocket teeth?"
+        ]
+      },
+      Gearbox: {
+        short: "gearbox",
+        icon: "🧰",
+        brands: ["Motology", "Regal Rexnord", "NIS", "OCR"],
+        fields: [
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, mixer, crusher" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. noise, overheating, leakage, replacement" },
+          { id: "existing", label: "Existing brand / model / ratio", type: "text", placeholder: "If any" },
+          { id: "type", label: "Gearbox type", type: "select", options: ["Helical", "Bevel", "Worm", "Planetary", "NA"] },
+          { section: "Operating Conditions" },
+          { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
+          { id: "inputSpeed", label: "Input speed (RPM)", type: "number", placeholder: "Enter input RPM" },
+          { id: "environment", label: "Environment", type: "select", options: ["Dust", "Oil", "Outdoor", "Clean", "NA"] },
+          { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
+          { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
+          { id: "condition", label: "Condition", type: "select", options: ["New", "Worn", "Failed", "NA"] },
+          { id: "oilCondition", label: "Lubrication condition (oil type / condition)", type: "text", placeholder: "e.g. ISO VG220, dark oil" },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+        ],
+        followups: [
+          "When was last oil change and was contamination observed?",
+          "Did noise/vibration increase gradually or suddenly?",
+          "Any overload peaks beyond normal process duty?"
+        ]
+      },
+      "Electric Motor": {
+        short: "motor",
+        icon: "⚡",
+        brands: ["Motology", "Regal Rexnord", "NIS", "OCR"],
+        fields: [
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. pump, fan, compressor" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. overheat, trip, noise, failure" },
+          { id: "existing", label: "Existing brand / model", type: "text", placeholder: "If any" },
+          { id: "type", label: "Motor type", type: "select", options: ["AC", "DC", "Single-phase", "Three-phase", "NA"] },
+          { section: "Specifications" },
+          { id: "power", label: "Power (kW/HP)", type: "text", placeholder: "e.g. 5.5kW / 7.5HP" },
+          { id: "voltage", label: "Voltage", type: "text", placeholder: "e.g. 415V" },
+          { id: "speed", label: "Speed (RPM)", type: "number", placeholder: "Enter RPM" },
+          { id: "mounting", label: "Mounting type", type: "select", options: ["Foot", "Flange", "Vertical", "NA"] },
+          { section: "Operating Conditions" },
+          { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
+          { id: "environment", label: "Environment", type: "select", options: ["Dust", "Oil", "Outdoor", "Clean", "NA"] },
+          { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
+          { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+        ],
+        followups: [
+          "Trip occurs at startup, high load, or random run time?",
+          "Any insulation/winding/current balance checks done recently?",
+          "Any airflow restriction from dust or nearby heat source?"
+        ]
+      },
+      Other: {
+        short: "other",
+        icon: "🧩",
+        brands: ["NIS", "Regal Rexnord"],
+        fields: [
+          { id: "description", label: "Product description", type: "textarea", placeholder: "Describe the product needed" },
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "Where it is used" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "Main issue/target" },
+          { id: "existing", label: "Existing brand / model", type: "text", placeholder: "If any" },
+          { id: "operatingCondition", label: "Operating condition", type: "textarea", placeholder: "Load, speed, environment, temperature, hours" },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+        ],
+        followups: [
+          "What is the most critical success metric: uptime, torque, precision, or cost?",
+          "Did issue start after any maintenance/process change?",
+          "What downtime window is acceptable before production impact?"
+        ]
+      }
+    };
+
+    const partHints = {
+      Coupling: ["Lovejoy L-series (verify bore/keyway)", "KTR ROTEX (verify hub size/spider hardness)"],
+      Belt: ["Optibelt SPA/SPB range (verify section/length)", "Bando timing belt series (verify pitch/width)"],
+      Chain: ["DID roller chain (verify pitch/strand)", "Tsubak RS series (verify attachment/length)"],
+      Gearbox: ["Motology helical reducer (verify ratio/service factor)", "Regal Rexnord reducer (verify mounting/torque)"],
+      "Electric Motor": ["OCR IE3 motor (verify frame/pole)", "Regal Rexnord motor (verify voltage/speed/enclosure)"],
+      Other: ["NIS equivalent after dimensional check", "Regal Rexnord engineered option after review"]
+    };
+
+    const state = {
+      category: "",
+      caseNumber: "",
+      userName: "",
+      referHistoricalCases: false,
+      industry: "",
+      submission: null,
+      formPhotos: [],
+      pendingChatFiles: [],
+      chatNotes: [],
+      followupQuestions: [],
+      followupAnswers: {},
+      recommendation: null,
+      referencedCaseNumbers: [],
+      feedbackRating: "",
+      feedbackComment: "",
+      historicalSaveKey: "",
+      activeShareItem: null,
+      history: [],
+      reanalysisRound: 0,
+      lastContextHash: "",
+      lastUpdatedAt: "",
+      isAnalyzing: false
+    };
+
+    const categorySelect = document.getElementById("categorySelect");
+    const categoryHint = document.getElementById("categoryHint");
+    const userNameInput = document.getElementById("userNameInput");
+    const industrySelect = document.getElementById("industrySelect");
+    const reqForm = document.getElementById("reqForm");
+    const recContent = document.getElementById("recContent");
+    const followupBox = document.getElementById("followupBox");
+    const pdfBtn = document.getElementById("pdfBtn");
+    const shareBtn = document.getElementById("shareBtn");
+    const feedbackPanel = document.getElementById("feedbackPanel");
+    const fbGoodBtn = document.getElementById("fbGoodBtn");
+    const fbBadBtn = document.getElementById("fbBadBtn");
+    const feedbackReason = document.getElementById("feedbackReason");
+    const feedbackHelper = document.getElementById("feedbackHelper");
+    const sharePanel = document.getElementById("sharePanel");
+    const nativeShareBtn = document.getElementById("nativeShareBtn");
+    const whatsappShareBtn = document.getElementById("whatsappShareBtn");
+    const emailShareBtn = document.getElementById("emailShareBtn");
+    const closeShareBtn = document.getElementById("closeShareBtn");
+    const shareNote = document.getElementById("shareNote");
+    const lastUpdatedText = document.getElementById("lastUpdatedText");
+    const historyList = document.getElementById("historyList");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    const chatPanel = document.getElementById("chatPanel");
+    const chatMsgs = document.getElementById("chatMsgs");
+    const chatAttachBtn = document.getElementById("chatAttachBtn");
+    const chatFileInput = document.getElementById("chatFileInput");
+    const chatFiles = document.getElementById("chatFiles");
+    const chatInput = document.getElementById("chatInput");
+    const chatSendBtn = document.getElementById("chatSendBtn");
+    const activityList = document.getElementById("activityList");
+    const flowProgress = document.getElementById("flowProgress");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function nowStamp() {
+      return new Date().toLocaleString("en-SG", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    function addActivity(title, detail) {
+      const div = document.createElement("div");
+      div.className = "act-item";
+      div.innerHTML = `<strong>${escapeHtml(title)}</strong><div>${escapeHtml(detail)}</div><span>${nowStamp()}</span>`;
+      activityList.prepend(div);
+    }
+
+    function addChatBubble(text, role) {
+      const b = document.createElement("div");
+      b.className = `bubble ${role}`;
+      b.textContent = text;
+      chatMsgs.appendChild(b);
+      chatMsgs.scrollTop = chatMsgs.scrollHeight;
+    }
+
+    function setFlow(done) {
+      const steps = Array.from(document.querySelectorAll(".flow-step[data-step]"));
+      const labels = Array.from(document.querySelectorAll(".flow-label[data-label]"));
+      const bools = [!!done[0], !!done[1], !!done[2], !!done[3], !!done[4], !!done[5]];
+      const firstIncomplete = bools.findIndex((x) => !x);
+      const active = firstIncomplete === -1 ? 6 : firstIncomplete + 1;
+
+      steps.forEach((el) => {
+        const n = Number(el.dataset.step);
+        el.classList.toggle("done", bools[n - 1]);
+        el.classList.toggle("active", n === active);
+      });
+      labels.forEach((el) => {
+        const n = Number(el.dataset.label);
+        el.classList.toggle("done", bools[n - 1]);
+        el.classList.toggle("active", n === active);
+      });
+
+      const doneCount = bools.filter(Boolean).length;
+      const width = ((Math.max(1, doneCount) - 1) / 5) * 100;
+      flowProgress.style.width = `${Math.max(0, Math.min(100, width))}%`;
+    }
+
+    function updateFlowState() {
+      const done1 = !!state.category;
+      const done2 = !!state.submission;
+      const done3 = !!state.recommendation;
+      const done4 = done3;
+      const done5 = !!state.feedbackRating && (state.feedbackRating !== "bad" || !!state.feedbackComment.trim());
+      const done6 = state.history.length > 0;
+      setFlow([done1, done2, done3, done4, done5, done6]);
+    }
+
+    function fallbackCaseNumber(categoryName) {
+      const categorySlug = String(categories[categoryName]?.short || categoryName || "other")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "other";
+      const key = `AISS_CASE_SEQUENCE_${categorySlug}`;
+      const current = Number(localStorage.getItem(key) || "0") + 1;
+      localStorage.setItem(key, String(current));
+      return `${categorySlug}_${String(current).padStart(5, "0")}`;
+    }
+
+    async function assignCaseNumber(categoryName) {
+      if (!categoryName) {
+        state.caseNumber = "";
+        return "";
+      }
+      try {
+        const response = await fetch(`/api/case-number/next?category=${encodeURIComponent(categoryName)}`);
+        const data = await response.json();
+        if (!response.ok || !data?.caseNumber) throw new Error(data?.error || "Case number request failed.");
+        state.caseNumber = data.caseNumber;
+      } catch (err) {
+        state.caseNumber = fallbackCaseNumber(categoryName);
+      }
+      return state.caseNumber;
+    }
+
+    function syncMetaFields() {
+      state.userName = String(userNameInput?.value || "").trim();
+      state.referHistoricalCases = false;
+      state.industry = String(industrySelect?.value || "").trim();
+    }
+
+    function bindMetaFields() {
+      if (userNameInput) {
+        userNameInput.addEventListener("input", syncMetaFields);
+      }
+      if (industrySelect) {
+        industrySelect.addEventListener("change", syncMetaFields);
+      }
+    }
+
+    function fileSizeText(bytes) {
+      const b = Number(bytes || 0);
+      if (b < 1024) return `${b}B`;
+      if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)}KB`;
+      return `${(b / (1024 * 1024)).toFixed(1)}MB`;
+    }
+
+    function clearFormPhotos() {
+      state.formPhotos.forEach((p) => {
+        try { URL.revokeObjectURL(p.url); } catch (err) { void err; }
+      });
+      state.formPhotos = [];
+      renderFormPhotoZone();
+    }
+
+    function addFormPhotos(files, source) {
+      const existing = new Set(state.formPhotos.map((p) => `${p.file.name}|${p.file.size}|${p.file.lastModified}`));
+      const list = Array.from(files || []).filter((f) => {
+        if (!String(f.type || "").startsWith("image/")) return false;
+        const key = `${f.name}|${f.size}|${f.lastModified}`;
+        if (existing.has(key)) return false;
+        existing.add(key);
+        return true;
+      });
+      if (!list.length) return;
+      list.forEach((file) => {
+        state.formPhotos.push({
+          id: `fp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          file,
+          url: URL.createObjectURL(file)
+        });
+      });
+      renderFormPhotoZone();
+      addActivity("Photo Uploaded", `${list.length} photo(s) via ${source}. Total: ${state.formPhotos.length}`);
+      updateFlowState();
+    }
+
+    function removeFormPhoto(id) {
+      const idx = state.formPhotos.findIndex((p) => p.id === id);
+      if (idx < 0) return;
+      const [removed] = state.formPhotos.splice(idx, 1);
+      if (removed?.url) {
+        try { URL.revokeObjectURL(removed.url); } catch (err) { void err; }
+      }
+      renderFormPhotoZone();
+      addActivity("Photo Deleted", removed?.file?.name || "photo removed");
+    }
+
+    function renderFormPhotoZone() {
+      const zone = document.getElementById("formPhotoZone");
+      if (!zone) return;
+      zone.innerHTML = "";
+      if (!state.formPhotos.length) {
+        zone.innerHTML = `<div class="photo-empty">No photo uploaded yet.<br/>Upload, drag-drop, or paste image here.</div>`;
+        return;
+      }
+      const list = document.createElement("div");
+      list.className = "photo-list";
+      state.formPhotos.forEach((item) => {
+        const d = document.createElement("div");
+        d.className = "photo-item";
+        d.innerHTML = `
+          <img src="${item.url}" alt="${escapeHtml(item.file.name)}" />
+          <div class="photo-name">${escapeHtml(item.file.name)}</div>
+          <button type="button" class="btn-secondary" data-remove-photo="${item.id}">Delete</button>
+        `;
+        list.appendChild(d);
+      });
+      zone.appendChild(list);
+      zone.querySelectorAll("button[data-remove-photo]").forEach((btn) => {
+        btn.addEventListener("click", () => removeFormPhoto(btn.dataset.removePhoto));
+      });
+    }
+
+    function clearPendingChatFiles() {
+      state.pendingChatFiles.forEach((p) => {
+        if (p.previewUrl) {
+          try { URL.revokeObjectURL(p.previewUrl); } catch (err) { void err; }
+        }
+      });
+      state.pendingChatFiles = [];
+      renderPendingChatFiles();
+    }
+
+    function addPendingChatFiles(files, source) {
+      const list = Array.from(files || []);
+      if (!list.length) return;
+      list.forEach((file) => {
+        state.pendingChatFiles.push({
+          id: `cf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          file,
+          previewUrl: String(file.type || "").startsWith("image/") ? URL.createObjectURL(file) : null
+        });
+      });
+      renderPendingChatFiles();
+      addActivity("Chat Attachment Added", `${list.length} file(s) via ${source}. Pending: ${state.pendingChatFiles.length}`);
+    }
+
+    function removePendingChatFile(id) {
+      const idx = state.pendingChatFiles.findIndex((f) => f.id === id);
+      if (idx < 0) return;
+      const [removed] = state.pendingChatFiles.splice(idx, 1);
+      if (removed?.previewUrl) {
+        try { URL.revokeObjectURL(removed.previewUrl); } catch (err) { void err; }
+      }
+      renderPendingChatFiles();
+      addActivity("Chat Attachment Removed", removed?.file?.name || "attachment removed");
+    }
+
+    function renderPendingChatFiles() {
+      chatFiles.innerHTML = "";
+      if (!state.pendingChatFiles.length) {
+        chatFiles.innerHTML = `<div class="cfiles-empty">No chat attachment selected.</div>`;
+        return;
+      }
+      state.pendingChatFiles.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "cfile";
+        row.innerHTML = `
+          <div class="cmeta">
+            <strong>${escapeHtml(item.file.name)}</strong>
+            <span>${escapeHtml(item.file.type || "unknown")} | ${escapeHtml(fileSizeText(item.file.size))}</span>
+          </div>
+          <button type="button" class="btn-secondary" data-remove-chat-file="${item.id}">Delete</button>
+        `;
+        chatFiles.appendChild(row);
+      });
+      chatFiles.querySelectorAll("button[data-remove-chat-file]").forEach((btn) => {
+        btn.addEventListener("click", () => removePendingChatFile(btn.dataset.removeChatFile));
+      });
+    }
+
+    function initCategoryOptions() {
+      Object.keys(categories).forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        categorySelect.appendChild(opt);
+      });
+    }
+
+    function createFieldInput(field) {
+      let el;
+      if (field.type === "select") {
+        el = document.createElement("select");
+        const defaultOpt = document.createElement("option");
+        defaultOpt.value = "";
+        defaultOpt.textContent = "Select";
+        el.appendChild(defaultOpt);
+        field.options.forEach((o) => {
+          const opt = document.createElement("option");
+          opt.value = o;
+          opt.textContent = o;
+          el.appendChild(opt);
+        });
+      } else if (field.type === "textarea") {
+        el = document.createElement("textarea");
+        el.placeholder = field.placeholder || "";
+      } else {
+        el = document.createElement("input");
+        el.type = field.type || "text";
+        el.placeholder = field.placeholder || "";
+        if (field.type === "number") el.min = "0";
+      }
+      el.id = field.id;
+      el.name = field.id;
+      return el;
+    }
+
+    function renderForm(categoryName) {
+      reqForm.innerHTML = "";
+      clearFormPhotos();
+      if (!categoryName || !categories[categoryName]) {
+        categoryHint.textContent = "Select one category to load the matching input form.";
+        return;
+      }
+      const cat = categories[categoryName];
+      categoryHint.textContent = `${cat.icon} ${categoryName} form loaded.`;
+
+      cat.fields.forEach((field) => {
+        if (field.section) {
+          const sec = document.createElement("div");
+          sec.className = "section-tag";
+          sec.textContent = field.section;
+          reqForm.appendChild(sec);
+          return;
+        }
+        const wrap = document.createElement("div");
+        const label = document.createElement("label");
+        label.setAttribute("for", field.id);
+        label.textContent = field.label;
+        wrap.appendChild(label);
+        wrap.appendChild(createFieldInput(field));
+        reqForm.appendChild(wrap);
+      });
+
+      const addInfoWrap = document.createElement("div");
+      const addInfoLabel = document.createElement("label");
+      addInfoLabel.setAttribute("for", "additionalInfo");
+      addInfoLabel.textContent = "Other issue / additional info";
+      const addInfoInput = document.createElement("textarea");
+      addInfoInput.id = "additionalInfo";
+      addInfoInput.name = "additionalInfo";
+      addInfoInput.placeholder = "Type any extra issue, observation, customer request, or special condition";
+      addInfoWrap.appendChild(addInfoLabel);
+      addInfoWrap.appendChild(addInfoInput);
+      reqForm.appendChild(addInfoWrap);
+
+      const pLabel = document.createElement("label");
+      pLabel.textContent = "Upload photo(s)";
+      reqForm.appendChild(pLabel);
+
+      const pickerRow = document.createElement("div");
+      pickerRow.className = "btn-row";
+      pickerRow.innerHTML = `
+        <button type="button" id="formPhotoPickerBtn" class="btn-secondary">Add Photo(s)</button>
+        <input id="formPhotoInput" type="file" multiple accept="image/*" style="display:none;" />
+      `;
+      reqForm.appendChild(pickerRow);
+
+      const zone = document.createElement("div");
+      zone.id = "formPhotoZone";
+      zone.className = "photo-zone";
+      zone.tabIndex = 0;
+      reqForm.appendChild(zone);
+      renderFormPhotoZone();
+
+      const actionRow = document.createElement("div");
+      actionRow.className = "btn-row";
+      actionRow.innerHTML = `
+        <button type="submit" class="btn-primary">Submit for Advice</button>
+        <button type="button" id="clearFormBtn" class="btn-secondary">Clear Form</button>
+      `;
+      reqForm.appendChild(actionRow);
+
+      const formPhotoPickerBtn = document.getElementById("formPhotoPickerBtn");
+      const formPhotoInput = document.getElementById("formPhotoInput");
+      const clearFormBtn = document.getElementById("clearFormBtn");
+
+      formPhotoPickerBtn.addEventListener("click", () => formPhotoInput.click());
+      formPhotoInput.addEventListener("change", (event) => {
+        addFormPhotos(event.target.files, "file picker");
+        event.target.value = "";
+      });
+      clearFormBtn.addEventListener("click", () => renderForm(categoryName));
+
+      ["dragenter", "dragover"].forEach((evt) => {
+        zone.addEventListener(evt, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          zone.classList.add("drag");
+        });
+      });
+      ["dragleave", "dragend"].forEach((evt) => {
+        zone.addEventListener(evt, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          zone.classList.remove("drag");
+        });
+      });
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        zone.classList.remove("drag");
+        if (event.dataTransfer?.files?.length) {
+          addFormPhotos(event.dataTransfer.files, "drag-drop");
+        }
+      });
+      zone.addEventListener("paste", (event) => {
+        event.stopPropagation();
+        const items = Array.from(event.clipboardData?.items || []);
+        const files = items
+          .filter((i) => i.kind === "file")
+          .map((i) => i.getAsFile())
+          .filter(Boolean);
+        if (files.length) {
+          event.preventDefault();
+          addFormPhotos(files, "paste");
+        }
+      });
+    }
+
+    function collectSubmission(caseNumber) {
+      if (!state.category || !categories[state.category]) return null;
+      syncMetaFields();
+      const data = {};
+      data.caseNumber = caseNumber || state.caseNumber;
+      data.user = state.userName;
+      data.industry = state.industry || "NA";
+      categories[state.category].fields.forEach((field) => {
+        if (field.section) return;
+        const el = document.getElementById(field.id);
+        data[field.id] = el ? String(el.value || "").trim() : "";
+      });
+      data.additionalInfo = String(document.getElementById("additionalInfo")?.value || "").trim();
+      data.photoUploaded = state.formPhotos.length ? "Yes" : "No";
+      data.photos = state.formPhotos.map((p) => p.file);
+      return data;
+    }
+
+    function extractTextFromFile(file) {
+      const name = String(file.name || "").toLowerCase();
+      const type = String(file.type || "").toLowerCase();
+      if (!type.startsWith("text/") && ![".txt", ".csv", ".json", ".xml", ".rtf"].some((x) => name.endsWith(x))) {
+        return Promise.resolve("");
+      }
+      return file.text()
+        .then((t) => t.replace(/\s+/g, " ").trim().slice(0, 600))
+        .catch(() => "");
+    }
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Unable to read uploaded file."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function buildContextText(payload) {
+      const base = [
+        payload.application || "",
+        payload.problem || "",
+        payload.additionalInfo || "",
+        payload.industry || "",
+        payload.existing || "",
+        payload.type || "",
+        payload.load || "",
+        payload.speed || "",
+        payload.inputSpeed || "",
+        payload.environment || "",
+        payload.temperature || "",
+        payload.hours || "",
+        payload.priority || ""
+      ].join(" ");
+      const follow = Object.entries(state.followupAnswers)
+        .filter(([, ans]) => (ans || "").trim())
+        .map(([q, ans]) => `${q} ${ans}`)
+        .join(" ");
+      const chat = state.chatNotes
+        .map((n) => `${n.text || ""} ${(n.insights || []).join(" ")} ${(n.files || []).map((f) => f.name).join(" ")}`)
+        .join(" ");
+      return `${base} ${follow} ${chat}`.replace(/\s+/g, " ").trim();
+    }
+
+    function simpleHash(text) {
+      let h = 0;
+      for (let i = 0; i < text.length; i += 1) {
+        h = (h << 5) - h + text.charCodeAt(i);
+        h |= 0;
+      }
+      return String(h);
+    }
+
+    function analyzeSignals(context) {
+      const t = context.toLowerCase();
+      const analysis = [];
+      const actions = [];
+      const add = (a, c) => {
+        if (!analysis.includes(a)) analysis.push(a);
+        if (!actions.includes(c)) actions.push(c);
+      };
+
+      if (/\bnoise|vibration/.test(t)) add("Noise/vibration pattern suggests possible misalignment, looseness, or internal wear progression.", "Perform alignment and vibration source check before final replacement.");
+      if (/\bslip|tension/.test(t)) add("Slip/tension clues suggest force transmission loss under load.", "Verify tension setting and contact surfaces/pulley condition.");
+      if (/\bbreak|crack|fracture/.test(t)) add("Breakage symptoms indicate overload, fatigue, or shock loading exposure.", "Check overload profile and select higher service-factor option if needed.");
+      if (/\bwear|elongation/.test(t)) add("Wear/elongation indicates progressive material loss likely from contamination or lubrication limits.", "Inspect lubrication quality/frequency and contamination control.");
+      if (/\boverheat|heat|temperature/.test(t)) add("Thermal stress appears to be a key reliability driver.", "Validate operating load vs rating and improve cooling/lubrication path.");
+      if (/\btrip|insulation|winding|current/.test(t)) add("Electrical symptoms may be coupled with mechanical loading issues.", "Include electrical health checks (insulation, current balance, supply quality).");
+      if (/\bleak|leakage/.test(t)) add("Leakage cues suggest sealing degradation and lubricant retention issues.", "Inspect seals/venting and confirm oil condition and level.");
+      if (/\bstartup|start up|inrush/.test(t)) add("Startup transient may be the trigger rather than steady-state operation.", "Review startup duty/load spike and confirm startup-safe sizing.");
+      if (/\bshock|impact|jerk/.test(t)) add("Shock events likely accelerating fatigue life reduction.", "Add damping/flexible element and review machine shock events.");
+      if (/\balign|soft foot|misalign/.test(t)) add("Installation/alignment quality is a probable root contributor.", "Run full alignment + soft-foot correction before replacing parts.");
+      if (/\bcontamination|dust|dirty oil|sludge|water ingress/.test(t)) add("Contamination risk appears significant in failure recurrence.", "Improve sealing/housekeeping and tighten lubricant cleanliness control.");
+      if (/\bjam|spike|overload peak/.test(t)) add("Intermittent overload/jamming may exceed selected component duty.", "Investigate process jamming and add overload protection where possible.");
+
+      if (!analysis.length) {
+        add("Current symptoms point to a mixed root cause across sizing, installation, and duty profile.", "Verify dimensional fit, duty point, and installation condition before part confirmation.");
+      }
+      return { analysis, actions };
+    }
+
+    function selectBrands(context) {
+      const list = categories[state.category]?.brands || ["NIS"];
+      const t = context.toLowerCase();
+      const mentioned = list.filter((b) => t.includes(b.toLowerCase()));
+      if (mentioned.length >= 2) return mentioned.slice(0, 2);
+      if (mentioned.length === 1) {
+        const second = list.find((x) => x !== mentioned[0]) || mentioned[0];
+        return [mentioned[0], second];
+      }
+      return [list[0], list[Math.min(1, list.length - 1)]];
+    }
+
+    function readBackgroundApiKey() {
+      const fromWindow = (typeof window !== "undefined" && window.__OPENAI_API_KEY) ? String(window.__OPENAI_API_KEY).trim() : "";
+      const fromStorage = (typeof window !== "undefined" && window.localStorage)
+        ? String(window.localStorage.getItem("OPENAI_API_KEY") || "").trim()
+        : "";
+      return fromWindow || fromStorage || "";
+    }
+
+    function chooseModelForComplexity(fullPayload) {
+      let score = 0;
+      const formText = JSON.stringify(fullPayload.formData || {});
+      const followCount = Object.keys(fullPayload.followUpAnswers || {}).length;
+      const chatCount = (fullPayload.chatUpdates || []).length;
+      const attachCount = (fullPayload.chatUpdates || []).reduce((sum, n) => sum + (n.files?.length || 0), 0);
+      const photoCount = (fullPayload.formPhotos || []).length;
+
+      score += Math.min(6, Math.floor(formText.length / 450));
+      score += Math.min(4, followCount);
+      score += Math.min(5, chatCount);
+      score += Math.min(5, attachCount);
+      score += Math.min(3, photoCount);
+
+      return score >= 10 ? "gpt-5.4" : "gpt-5.4-mini";
+    }
+
+    function buildAnalysisPayload(payload) {
+      return {
+        caseNumber: state.caseNumber,
+        user: state.userName,
+        referHistoricalCases: false,
+        industry: state.industry || "NA",
+        category: state.category,
+        formData: payload,
+        formPhotos: state.formPhotos.map((p) => ({
+          name: p.file.name,
+          type: p.file.type || "unknown",
+          size: p.file.size
+        })),
+        followUpAnswers: state.followupAnswers,
+        chatUpdates: state.chatNotes.map((note) => ({
+          text: note.text,
+          files: (note.files || []).map((file) => ({
+            name: file.name,
+            type: file.type || "unknown",
+            size: file.size
+          })),
+          insights: note.insights,
+          time: note.time
+        })),
+        previousReanalysisCount: state.reanalysisRound,
+        generatedAt: nowStamp()
+      };
+    }
+
+    function extractResponseText(data) {
+      if (data?.output_text && typeof data.output_text === "string") return data.output_text;
+      const chunks = [];
+      (data?.output || []).forEach((item) => {
+        (item?.content || []).forEach((c) => {
+          if (typeof c?.text === "string") chunks.push(c.text);
+        });
+      });
+      return chunks.join("\n").trim();
+    }
+
+    async function requestAIRecommendation(fullPayload) {
+      const model = chooseModelForComplexity(fullPayload);
+
+      const allowedBrands = categories[state.category]?.brands || ["NIS"];
+      const schema = {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          inputSummary: { type: "array", items: { type: "string" } },
+          problemUnderstanding: { type: "string" },
+          recommendation: { type: "array", items: { type: "string" } },
+          brands: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2 },
+          parts: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2 },
+          suggestedByAI: { type: "string" },
+          reason: { type: "string" },
+          assumptions: { type: "array", items: { type: "string" } },
+          decisionGuidance: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
+          followUpQuestions: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 3 },
+          runNote: { type: "string" }
+        },
+        required: [
+          "inputSummary",
+          "problemUnderstanding",
+          "recommendation",
+          "brands",
+          "parts",
+          "suggestedByAI",
+          "reason",
+          "assumptions",
+          "decisionGuidance",
+          "followUpQuestions",
+          "runNote"
+        ]
+      };
+
+      const systemPrompt =
+        "You are AI Sales Support for industrial power transmission. " +
+        "Analyze all provided input and return a professional, human-sounding internal recommendation. " +
+        "Do not sound like system logs. " +
+        "If there is new info, explicitly reflect the impact inside problemUnderstanding and recommendation. " +
+        "Use only approved brands provided in the user payload. " +
+        "Output strictly valid JSON per schema.";
+
+      const userPrompt = {
+        task: "Reassess recommendation from complete latest context.",
+        approvedBrands: allowedBrands,
+        instructions: [
+          "Use a professional human analyst tone.",
+          "Acknowledge latest added info in a natural way (not round number or timestamp in analysis text).",
+          "Recommendations should be practical and specific.",
+          "suggestedByAI must recommend a suitable brand and part reference from the market based on your understanding of the case, even if exact confirmation is still needed.",
+          "decisionGuidance must guide the user what to check, measure, ask, or confirm next to improve decision quality.",
+          "Follow-up questions must not repeat the original form blindly; they should improve diagnostic accuracy."
+        ],
+        payload: fullPayload
+      };
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          caseContext: fullPayload,
+          input: [
+            { role: "system", content: [{ type: "input_text", text: systemPrompt }] },
+            { role: "user", content: [{ type: "input_text", text: JSON.stringify(userPrompt, null, 2) }] }
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "sales_support_output",
+              schema,
+              strict: true
+            }
+          }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const msg = data?.error?.message || "Analysis request failed.";
+        throw new Error(msg);
+      }
+
+      const raw = extractResponseText(data);
+      if (!raw) throw new Error("AI returned empty response.");
+      const parsed = JSON.parse(raw);
+
+      const safeBrands = (parsed.brands || []).filter((b) => allowedBrands.includes(b));
+      while (safeBrands.length < 2) {
+        const fallback = allowedBrands[safeBrands.length] || allowedBrands[0] || "NIS";
+        safeBrands.push(fallback);
+      }
+      parsed.brands = safeBrands.slice(0, 2);
+
+      if (!Array.isArray(parsed.followUpQuestions) || !parsed.followUpQuestions.length) {
+        parsed.followUpQuestions = [...(categories[state.category]?.followups || [])].slice(0, 3);
+      }
+      parsed.followUpQuestions = parsed.followUpQuestions.slice(0, 3);
+      parsed.retrievedCaseNumbers = Array.isArray(data?.retrieved_case_numbers) ? data.retrieved_case_numbers : [];
+      return parsed;
+    }
+
+    function buildInputSummary(payload) {
+      const lines = [
+        `Case number: ${payload.caseNumber || state.caseNumber || "N/A"}`,
+        `User: ${payload.user || state.userName || "N/A"}`,
+        `Industry: ${payload.industry || state.industry || "NA"}`,
+        `Category: ${state.category}`
+      ];
+      const fields = categories[state.category]?.fields || [];
+      fields.forEach((f) => {
+        if (f.section) return;
+        const v = payload[f.id];
+        if (v) lines.push(`${f.label}: ${v}`);
+      });
+      if (payload.additionalInfo) lines.push(`Other issue / additional info: ${payload.additionalInfo}`);
+      lines.push(`Photo uploaded: ${payload.photoUploaded}`);
+      lines.push(`Photo count: ${payload.photos.length}`);
+
+      Object.entries(state.followupAnswers).forEach(([q, ans]) => {
+        if ((ans || "").trim()) lines.push(`Follow-up input: ${q} -> ${ans.trim()}`);
+      });
+
+      state.chatNotes.forEach((n, i) => {
+        if ((n.text || "").trim()) lines.push(`Chat input ${i + 1}: ${n.text.trim()}`);
+        if (n.files?.length) lines.push(`Chat attachment set ${i + 1}: ${n.files.map((f) => f.name).join(", ")}`);
+      });
+      return lines;
+    }
+
+    function generateFollowups(payload) {
+      const base = [...(categories[state.category]?.followups || [])];
+      const context = buildContextText(payload).toLowerCase();
+      if (payload.photoUploaded === "No") base.push("Can you upload one close-up and one full assembly photo for better verification?");
+      if (/\bnoise|vibration/.test(context)) base.push("Has the noise/vibration pattern changed after any tightening/alignment attempt?");
+      if (/\boverheat|heat/.test(context)) base.push("Do you have rough temperature trend before and during fault period?");
+      return Array.from(new Set(base)).slice(0, 3);
+    }
+
+    function feedbackReady() {
+      return !!state.feedbackRating && (state.feedbackRating !== "bad" || !!state.feedbackComment.trim());
+    }
+
+    async function ensureCaseNumberAssigned() {
+      if (state.caseNumber) return state.caseNumber;
+      if (!state.category || !state.submission) return "";
+      const caseNumber = await assignCaseNumber(state.category);
+      if (!caseNumber) return "";
+      state.caseNumber = caseNumber;
+      state.submission.caseNumber = caseNumber;
+      return caseNumber;
+    }
+
+    function syncFeedbackUi() {
+      if (!feedbackPanel) return;
+      feedbackPanel.classList.toggle("active", !!state.recommendation);
+      fbGoodBtn?.classList.toggle("active", state.feedbackRating === "good");
+      fbBadBtn?.classList.toggle("active", state.feedbackRating === "bad");
+      if (feedbackReason) {
+        feedbackReason.style.display = state.feedbackRating === "bad" ? "block" : "none";
+        feedbackReason.value = state.feedbackComment;
+      }
+      if (feedbackHelper) {
+        if (!state.feedbackRating) {
+          feedbackHelper.textContent = "Choose Good or Needs work before PDF or Share. Needs work requires feedback.";
+        } else if (state.feedbackRating === "bad" && !state.feedbackComment.trim()) {
+          feedbackHelper.textContent = "Please tell us what was wrong or missing before PDF or Share.";
+        } else {
+          feedbackHelper.textContent = state.feedbackRating === "good"
+            ? "Thanks. This case will be saved into historical good cases when you export."
+            : "Thanks. This case will be saved into historical bad cases with your feedback when you export.";
+        }
+      }
+    }
+
+    function setFeedbackRating(rating) {
+      state.feedbackRating = rating;
+      if (rating !== "bad") state.feedbackComment = "";
+      state.historicalSaveKey = "";
+      syncFeedbackUi();
+      updateFlowState();
+      if (feedbackReady()) {
+        ensureCaseNumberAssigned().catch(() => {});
+      }
+    }
+
+    async function saveHistoricalCaseRecord(pdfName) {
+      const saveKey = `${state.feedbackRating}|${state.feedbackComment.trim()}|${pdfName}`;
+      if (state.historicalSaveKey === saveKey) return true;
+      const response = await fetch("/api/historical-case", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: state.feedbackRating,
+          feedbackText: state.feedbackRating === "bad" ? state.feedbackComment.trim() : "",
+          pdfName,
+          category: state.category,
+          casePayload: state.submission,
+          aiResponse: state.recommendation,
+          referHistoricalCases: false,
+          referencedCaseNumbers: state.referencedCaseNumbers || []
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Unable to save historical case.");
+      }
+      state.historicalSaveKey = saveKey;
+      addActivity(
+        data?.saved === false ? "Historical Save Skipped" : "Historical Case Saved",
+        data?.message || `${state.submission?.caseNumber || state.caseNumber} saved for ${state.feedbackRating} feedback.`
+      );
+      return true;
+    }
+
+    async function ensureReadyForExport() {
+      if (!state.recommendation) {
+        return { ok: false, reason: "Please submit details first." };
+      }
+      if (!state.feedbackRating) {
+        feedbackPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+        fbGoodBtn?.focus();
+        return { ok: false, reason: "Please rate the AI answer before PDF or Share." };
+      }
+      if (state.feedbackRating === "bad" && !state.feedbackComment.trim()) {
+        feedbackReason?.focus();
+        feedbackPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return { ok: false, reason: "Please write feedback for thumbs down before PDF or Share." };
+      }
+      const caseNumber = await ensureCaseNumberAssigned();
+      if (!caseNumber) {
+        return { ok: false, reason: "Unable to generate case number right now." };
+      }
+      await saveHistoricalCaseRecord(pdfFilename());
+      return { ok: true };
+    }
+
+    function bringRecommendationIntoView() {
+      const panel = document.querySelector(".recommendation");
+      if (!panel) return;
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      recContent.setAttribute("tabindex", "-1");
+      setTimeout(() => recContent.focus({ preventScroll: true }), 350);
+    }
+
+    function updateWebsiteChangedLabel() {
+      if (!lastUpdatedText) return;
+      const source = document.lastModified ? new Date(document.lastModified) : new Date();
+      state.lastUpdatedAt = source.toISOString();
+      lastUpdatedText.textContent = `Website update: ${source.toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      })}`;
+    }
+
+    function setAnalysisLoading(isLoading) {
+      [pdfBtn, shareBtn].forEach((btn) => {
+        if (btn) btn.disabled = isLoading;
+      });
+      if (fbGoodBtn) fbGoodBtn.disabled = isLoading;
+      if (fbBadBtn) fbBadBtn.disabled = isLoading;
+      if (feedbackReason) feedbackReason.disabled = isLoading;
+      const submitBtn = reqForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = isLoading;
+        submitBtn.textContent = isLoading ? "Analyzing..." : "Submit for Advice";
+      }
+      const updateBtn = document.getElementById("updateRecBtn");
+      if (updateBtn) {
+        updateBtn.disabled = isLoading;
+        updateBtn.textContent = isLoading ? "Analyzing..." : "Update Recommendation";
+      }
+      if (!isLoading) return;
+      recContent.className = "";
+      recContent.innerHTML = `
+        <div class="thinking-card">
+          <div class="thinking-bot">🤖</div>
+          <div>
+            <p class="thinking-title">Robot is thinking...</p>
+            <p class="thinking-text">Analyzing the latest case details and preparing the recommendation. Please wait a moment.</p>
+          </div>
+        </div>
+      `;
+      bringRecommendationIntoView();
+    }
+
+    async function generateRecommendation(payload) {
+      if (state.isAnalyzing) return;
+      state.isAnalyzing = true;
+      setAnalysisLoading(true);
+      addActivity("Recommendation Updating", "Refreshing analysis with latest inputs.");
+
+      try {
+        const fullPayload = buildAnalysisPayload(payload);
+        const aiResult = await requestAIRecommendation(fullPayload);
+        const context = buildContextText(payload);
+        const hash = simpleHash(context);
+        const changed = hash !== state.lastContextHash;
+        state.lastContextHash = hash;
+        state.reanalysisRound += 1;
+        state.referencedCaseNumbers = aiResult.retrievedCaseNumbers || [];
+        state.feedbackRating = "";
+        state.feedbackComment = "";
+        state.historicalSaveKey = "";
+
+        const referenceIntro = "";
+
+        state.recommendation = {
+          runInfo: changed ? "Assessment Updated" : "Assessment Reviewed",
+          runNote: aiResult.runNote || (changed
+            ? "Latest user input has been incorporated into this recommendation."
+            : "Current recommendation reviewed against latest available input."),
+          summary: buildInputSummary(payload),
+          problemUnderstanding: `${referenceIntro}${aiResult.problemUnderstanding || "No analysis returned."}`.trim(),
+          recommendations: Array.isArray(aiResult.recommendation) ? aiResult.recommendation : ["No recommendation returned."],
+          brands: Array.isArray(aiResult.brands) ? aiResult.brands.slice(0, 2) : selectBrands(context),
+          parts: Array.isArray(aiResult.parts) ? aiResult.parts.slice(0, 2) : (partHints[state.category] || ["To be confirmed", "To be confirmed"]),
+          suggestedByAI: aiResult.suggestedByAI || "Suggest a suitable market brand and part number based on the current case details, then confirm final fit by application and dimensions.",
+          reason: aiResult.reason || "Reason not returned by AI.",
+          assumptions: Array.isArray(aiResult.assumptions) ? aiResult.assumptions : ["Assumptions not returned by AI."],
+          decisionGuidance: Array.isArray(aiResult.decisionGuidance)
+            ? aiResult.decisionGuidance.slice(0, 5)
+            : generateFollowups(payload).map((q) => `Confirm: ${q}`)
+        };
+
+        state.followupQuestions = Array.isArray(aiResult.followUpQuestions)
+          ? aiResult.followUpQuestions.slice(0, 3)
+          : generateFollowups(payload);
+
+        renderRecommendation();
+        renderFollowups();
+        syncFeedbackUi();
+        updateFlowState();
+        bringRecommendationIntoView();
+        addActivity("Recommendation Updated", `Reassessment completed (run ${state.reanalysisRound}).`);
+      } catch (err) {
+        const normalized = String(err?.message || "Unknown error");
+        const safeMsg = normalized.includes("Background API key is not configured")
+          ? "Backend API key is missing. Please set OPENAI_API_KEY in backend .env and restart server."
+          : normalized;
+        addActivity("Recommendation Update Failed", err.message || "Unknown error.");
+        addChatBubble(`Unable to refresh recommendation right now: ${safeMsg}`, "ai");
+      } finally {
+        state.isAnalyzing = false;
+        setAnalysisLoading(false);
+      }
+    }
+
+    function renderRecommendation() {
+      if (!state.recommendation) return;
+      const r = state.recommendation;
+      const photoHtml = state.formPhotos.length
+        ? `
+          <div class="input-photo">
+            <div class="input-photo-title">Uploaded Photo(s)</div>
+            <div class="input-photo-list">
+              ${state.formPhotos.map((p) => `
+                <div class="input-photo-card">
+                  <img src="${p.url}" alt="${escapeHtml(p.file.name)}" />
+                  <div class="input-photo-name">${escapeHtml(p.file.name)}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `
+        : "";
+
+      recContent.className = "";
+      recContent.innerHTML = `
+        <div class="status">${escapeHtml(r.runInfo)}</div>
+        <p class="rec-note">${escapeHtml(r.runNote)}</p>
+        <div class="rec-stack">
+          <section class="rec-block">
+            <h3>A. Input Summary</h3>
+            <p class="rec-text">${escapeHtml(r.summary.join("\n"))}</p>
+            ${photoHtml}
+          </section>
+          <section class="rec-block">
+            <h3>B. Problem Understanding</h3>
+            <p class="rec-text">${escapeHtml(r.problemUnderstanding)}</p>
+          </section>
+          <section class="rec-block">
+            <h3>C. Analysis and Recommendation</h3>
+            <p class="rec-text">${escapeHtml(r.recommendations.map((x, i) => `${i + 1}. ${x}`).join("\n"))}</p>
+          </section>
+          <section class="rec-block">
+            <h3>D. Suggested Brand(s) and Part Number</h3>
+            <p class="rec-text">Brand 1: ${escapeHtml(r.brands[0] || "N/A")}\nBrand 2: ${escapeHtml(r.brands[1] || "N/A")}\n\nSuggested part references:\n- ${escapeHtml(r.parts[0] || "N/A")}\n- ${escapeHtml(r.parts[1] || "N/A")}\n\nSuggested by AI: ${escapeHtml(r.suggestedByAI || "N/A")}</p>
+          </section>
+          <section class="rec-block">
+            <h3>E. Reason</h3>
+            <p class="rec-text">${escapeHtml(r.reason)}</p>
+          </section>
+          <section class="rec-block">
+            <h3>F. Assumptions / Uncertainty</h3>
+            <p class="rec-text">${escapeHtml(r.assumptions.map((x) => `- ${x}`).join("\n"))}</p>
+          </section>
+          <section class="rec-block">
+            <h3>G. What to Check / Ask Next</h3>
+            <p class="rec-text">${escapeHtml((r.decisionGuidance || []).map((x) => `- ${x}`).join("\n"))}</p>
+          </section>
+        </div>
+      `;
+      syncFeedbackUi();
+    }
+
+    function renderFollowups() {
+      if (!state.followupQuestions.length) {
+        followupBox.style.display = "none";
+        return;
+      }
+      followupBox.style.display = "block";
+      followupBox.innerHTML = `
+        <h3>Follow-up Questions</h3>
+        <div class="followup-grid">
+          ${state.followupQuestions.map((q, i) => `
+            <div class="f-item">
+              <div class="f-q"><span class="f-no">${i + 1}</span>${escapeHtml(q)}</div>
+              <input id="f_${i}" type="text" value="${escapeHtml(state.followupAnswers[q] || "")}" placeholder="Optional answer for better re-analysis" />
+            </div>
+          `).join("")}
+        </div>
+        <div class="btn-row">
+          <button id="updateRecBtn" class="btn-primary" type="button">Update Recommendation</button>
+          <button id="skipFollowBtn" class="btn-secondary" type="button">Skip</button>
+        </div>
+      `;
+
+      document.getElementById("updateRecBtn").addEventListener("click", async () => {
+        state.followupQuestions.forEach((q, i) => {
+          const v = document.getElementById(`f_${i}`).value.trim();
+          if (v) state.followupAnswers[q] = v;
+        });
+        if (state.submission) await generateRecommendation(state.submission);
+      });
+      document.getElementById("skipFollowBtn").addEventListener("click", () => {
+        addActivity("Follow-up Skipped", "No additional follow-up answer provided.");
+      });
+    }
+
+    function recLinesForPdf() {
+      if (!state.recommendation) return [];
+      const r = state.recommendation;
+      return [
+        "AI SALES SUPPORT ANALYSIS AND RECOMMENDATION",
+        "",
+        `Case number: ${state.submission?.caseNumber || state.caseNumber || "N/A"}`,
+        `User: ${state.submission?.user || state.userName || "N/A"}`,
+        `Industry: ${state.submission?.industry || state.industry || "NA"}`,
+        `Product category: ${state.category || "N/A"}`,
+        "",
+        r.runInfo || "",
+        r.runNote || "",
+        "",
+        "A. Input Summary",
+        ...r.summary,
+        "",
+        "B. Problem Understanding",
+        r.problemUnderstanding,
+        "",
+        "C. Analysis and Recommendation",
+        ...r.recommendations.map((x, i) => `${i + 1}. ${x}`),
+        "",
+        "D. Suggested Brand(s) & Part Number",
+        `Brand 1: ${r.brands[0] || "N/A"}`,
+        `Brand 2: ${r.brands[1] || "N/A"}`,
+        `- ${r.parts[0] || "N/A"}`,
+        `- ${r.parts[1] || "N/A"}`,
+        `Suggested by AI: ${r.suggestedByAI || "N/A"}`,
+        "",
+        "E. Reason",
+        r.reason,
+        "",
+        "F. Assumptions / Uncertainty",
+        ...r.assumptions.map((x) => `- ${x}`),
+        "",
+        "G. What to Check / Ask Next",
+        ...(r.decisionGuidance || []).map((x) => `- ${x}`),
+        "",
+        "All outputs require expert verification before customer sharing."
+      ];
+    }
+
+    function pdfFilename() {
+      const caseNumber = String(state.submission?.caseNumber || state.caseNumber || "case")
+        .replace(/[^a-zA-Z0-9-]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+      return `${caseNumber}.pdf`;
+    }
+
+    async function buildPdfItem() {
+      if (!state.recommendation || !window.jspdf || !window.jspdf.jsPDF) return null;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const lines = recLinesForPdf();
+      const left = 38;
+      const width = doc.internal.pageSize.getWidth() - 76;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageBottom = pageHeight - 42;
+      const red = [179, 18, 23];
+      const dark = [32, 39, 53];
+      const muted = [95, 105, 122];
+      const border = [224, 229, 238];
+      let y = 38;
+
+      function drawPageHeader() {
+        doc.setFillColor(...red);
+        doc.rect(0, 0, pageWidth, 12, "F");
+        doc.setDrawColor(...border);
+        doc.line(left, pageHeight - 28, pageWidth - left, pageHeight - 28);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...muted);
+        doc.text("AI Sales Support", left, pageHeight - 15);
+      }
+
+      function ensureSpace(height = 24) {
+        if (y + height > pageBottom) {
+          doc.addPage();
+          drawPageHeader();
+          y = 42;
+        }
+      }
+
+      function addHeading(text) {
+        ensureSpace(30);
+        y += 5;
+        doc.setDrawColor(235, 238, 244);
+        doc.line(left, y - 9, pageWidth - left, y - 9);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...red);
+        doc.text(text, left, y);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...dark);
+        y += 18;
+      }
+
+      function addWrappedText(text) {
+        const line = String(text || "");
+        if (!line.trim()) {
+          y += 7;
+          return;
+        }
+        const wrapped = doc.splitTextToSize(line, width);
+        ensureSpace(wrapped.length * 12.5 + 4);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...dark);
+        doc.text(wrapped, left, y);
+        y += wrapped.length * 12.5 + 1;
+      }
+
+      drawPageHeader();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(...dark);
+      doc.text(lines[0], left, y);
+      y += 18;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...muted);
+
+      const metaLines = lines.slice(2, 6);
+      doc.setFillColor(250, 251, 253);
+      doc.setDrawColor(...border);
+      doc.roundedRect(left, y, width, 62, 6, 6, "FD");
+      let metaY = y + 18;
+      metaLines.forEach((line) => {
+        doc.text(line, left + 12, metaY);
+        metaY += 13;
+      });
+      y += 78;
+
+      for (let i = 6; i < lines.length; i += 1) {
+        const line = lines[i] || "";
+        if (/^[A-G]\./.test(line)) {
+          addHeading(line);
+          continue;
+        }
+        addWrappedText(line);
+      }
+
+      const chatFiles = state.chatNotes.flatMap((note, noteIndex) =>
+        (note.files || []).map((file) => ({ ...file, noteIndex, time: note.time }))
+      );
+      if (state.formPhotos.length || chatFiles.length) {
+        y += 8;
+        addHeading("H. Uploaded Photo(s) / Attachment(s)");
+      }
+
+      for (const photo of state.formPhotos) {
+        addWrappedText(`Form photo: ${photo.file.name} (${fileSizeText(photo.file.size)})`);
+        try {
+          const dataUrl = await fileToDataUrl(photo.file);
+          const props = doc.getImageProperties(dataUrl);
+          const imgW = Math.min(width, 240);
+          const imgH = Math.min(180, (props.height / props.width) * imgW);
+          ensureSpace(imgH + 22);
+          doc.setDrawColor(...border);
+          doc.roundedRect(left - 3, y - 3, imgW + 6, imgH + 6, 4, 4, "S");
+          doc.addImage(dataUrl, undefined, left, y, imgW, imgH);
+          y += imgH + 18;
+        } catch (err) {
+          addWrappedText("Image preview could not be embedded in PDF.");
+        }
+      }
+
+      for (const item of chatFiles) {
+        const label = `Chat attachment ${item.noteIndex + 1}: ${item.name} (${item.type || "unknown"}, ${fileSizeText(item.size || 0)})`;
+        addWrappedText(label);
+        if (item.file && String(item.type || "").startsWith("image/")) {
+          try {
+            const dataUrl = await fileToDataUrl(item.file);
+            const props = doc.getImageProperties(dataUrl);
+            const imgW = Math.min(width, 240);
+            const imgH = Math.min(180, (props.height / props.width) * imgW);
+            ensureSpace(imgH + 22);
+            doc.setDrawColor(...border);
+            doc.roundedRect(left - 3, y - 3, imgW + 6, imgH + 6, 4, 4, "S");
+            doc.addImage(dataUrl, undefined, left, y, imgW, imgH);
+            y += imgH + 18;
+          } catch (err) {
+            addWrappedText("Image preview could not be embedded in PDF.");
+          }
+        }
+      }
+
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      return {
+        filename: pdfFilename(),
+        created: nowStamp(),
+        blob,
+        url
+      };
+    }
+
+    function downloadPdf(item) {
+      const a = document.createElement("a");
+      a.href = item.url;
+      a.download = item.filename;
+      a.click();
+      addActivity("PDF Downloaded", item.filename);
+    }
+
+    function canSharePdfFile(item) {
+      if (!item || !navigator.share) return false;
+      try {
+        const file = new File([item.blob], item.filename, { type: "application/pdf" });
+        return !navigator.canShare || navigator.canShare({ files: [file] });
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function shareTextFor(item) {
+      const lines = recLinesForPdf().slice(0, 14).filter(Boolean);
+      const caseNumber = state.submission?.caseNumber || state.caseNumber || "N/A";
+      const user = state.submission?.user || state.userName || "N/A";
+      const category = state.category || "N/A";
+      return [
+        "AI Sales Support analysis and recommendation",
+        `Case number: ${caseNumber}`,
+        `User: ${user}`,
+        `Product category: ${category}`,
+        item?.filename ? `PDF: ${item.filename}` : "",
+        "",
+        ...lines
+      ].join("\n").trim();
+    }
+
+    async function sharePdf(item) {
+      try {
+        if (!navigator.share) {
+          throw new Error("This browser cannot open an external share sheet. Please use a supported browser or device.");
+        }
+        const shareData = {
+          title: item.filename,
+          text: shareTextFor(item)
+        };
+        if (canSharePdfFile(item)) {
+          const file = new File([item.blob], item.filename, { type: "application/pdf" });
+          shareData.files = [file];
+        }
+        await navigator.share(shareData);
+        addActivity("PDF Shared", item.filename);
+        closeSharePanel();
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          addActivity("Share Cancelled", item.filename);
+          return;
+        }
+        const msg = err.message || "Unable to open external share.";
+        addActivity("Share Failed", msg);
+        addChatBubble(msg, "ai");
+      }
+    }
+
+    function openWhatsAppShare(item) {
+      const text = shareTextFor(item);
+      window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+      addActivity("WhatsApp Opened", item.filename);
+      if (shareNote) {
+        shareNote.textContent = "WhatsApp Web can receive the recommendation text. To attach the PDF file itself, use Share PDF on a browser/device that supports file sharing, or download the PDF and attach it manually.";
+      }
+    }
+
+    function openEmailShare(item) {
+      const caseNumber = state.submission?.caseNumber || state.caseNumber || "N/A";
+      const user = state.submission?.user || state.userName || "N/A";
+      const subject = `AI Sales Support recommendation - ${caseNumber} - ${user}`;
+      const body = shareTextFor(item);
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      addActivity("Email Opened", item.filename);
+      if (shareNote) {
+        shareNote.textContent = "Email opens with recommendation text. Browser mail links cannot attach generated PDF files automatically.";
+      }
+    }
+
+    function showSharePanel(item) {
+      state.activeShareItem = item;
+      if (!sharePanel) return;
+      const canShare = canSharePdfFile(item);
+      nativeShareBtn.disabled = !canShare;
+      nativeShareBtn.title = canShare
+        ? "Share the PDF through your browser share sheet."
+        : "PDF file sharing is not supported by this browser.";
+      shareNote.textContent = canShare
+        ? "Choose Share PDF to send the generated PDF through a supported external app."
+        : "This browser cannot attach a generated PDF directly to WhatsApp Web. WhatsApp can be opened with the recommendation text.";
+      sharePanel.classList.add("active");
+    }
+
+    function closeSharePanel() {
+      state.activeShareItem = null;
+      if (sharePanel) sharePanel.classList.remove("active");
+    }
+
+    function pushHistory(item) {
+      state.history.unshift(item);
+      renderHistory();
+      updateFlowState();
+    }
+
+    function removeHistory(index) {
+      const item = state.history[index];
+      if (!item) return;
+      try { URL.revokeObjectURL(item.url); } catch (err) { void err; }
+      state.history.splice(index, 1);
+      renderHistory();
+      addActivity("History Deleted", item.filename);
+      updateFlowState();
+    }
+
+    function clearHistory() {
+      state.history.forEach((item) => {
+        try { URL.revokeObjectURL(item.url); } catch (err) { void err; }
+      });
+      state.history = [];
+      renderHistory();
+      addActivity("History Cleared", "All history items removed.");
+      updateFlowState();
+    }
+
+    function renderHistory() {
+      if (!state.history.length) {
+        historyList.innerHTML = `<p class="tiny">No PDF generated yet.</p>`;
+        return;
+      }
+      historyList.innerHTML = "";
+      state.history.forEach((item, i) => {
+        const d = document.createElement("div");
+        d.className = "history-item";
+        d.innerHTML = `
+          <div class="h-name">${escapeHtml(item.filename)}</div>
+          <div class="h-time">${escapeHtml(item.created)}</div>
+          <div class="h-actions">
+            <button class="btn-secondary" data-h-action="download" data-h-index="${i}">Download</button>
+            <button class="btn-secondary" data-h-action="share" data-h-index="${i}">Share</button>
+            <button class="btn-secondary" data-h-action="delete" data-h-index="${i}">Delete</button>
+          </div>
+        `;
+        historyList.appendChild(d);
+      });
+    }
+
+    async function handleChatSend() {
+      const text = chatInput.value.trim();
+      const pending = [...state.pendingChatFiles];
+      if (!text && !pending.length) return;
+
+      const fileNames = pending.length ? `\nFiles: ${pending.map((p) => p.file.name).join(", ")}` : "";
+      addChatBubble(`${text || "(No text)"}${fileNames}`, "user");
+      chatInput.value = "";
+
+      const insights = [];
+      for (const p of pending) {
+        const extracted = await extractTextFromFile(p.file);
+        const meta = `Uploaded file: ${p.file.name} (${p.file.type || "unknown"}, ${fileSizeText(p.file.size)})`;
+        insights.push(extracted ? `${meta}. Content note: ${extracted}` : meta);
+      }
+
+      const storedFiles = pending.map((p) => ({
+        name: p.file.name,
+        type: p.file.type || "unknown",
+        size: p.file.size,
+        file: p.file,
+        previewUrl: p.previewUrl
+      }));
+      pending.forEach((p) => {
+        p.previewUrl = null;
+      });
+
+      state.chatNotes.push({
+        text,
+        files: storedFiles,
+        insights,
+        time: nowStamp()
+      });
+      clearPendingChatFiles();
+      addActivity("Chat Update Received", text || "Attachment-only update.");
+
+      if (!state.submission) {
+        addChatBubble("Submit the category form first. After that, every chat update will trigger full re-analysis.", "ai");
+        updateFlowState();
+        return;
+      }
+
+      await generateRecommendation(state.submission);
+      addChatBubble("Thanks, I have reassessed the case using your latest update and refreshed the recommendation.", "ai");
+      updateFlowState();
+    }
+
+    reqForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!state.category) {
+        alert("Please select a category first.");
+        return;
+      }
+      const payload = collectSubmission();
+      if (!payload.user) {
+        alert("Please enter user name.");
+        userNameInput?.focus();
+        return;
+      }
+      payload.caseNumber = "";
+      state.caseNumber = "";
+      state.submission = payload;
+      addActivity("Form Submitted", `${state.category} details submitted for AI review.`);
+      await generateRecommendation(payload);
+      updateFlowState();
+    });
+
+    categorySelect.addEventListener("change", () => {
+      state.category = categorySelect.value;
+      state.submission = null;
+      state.followupAnswers = {};
+      state.followupQuestions = [];
+      state.recommendation = null;
+      state.referencedCaseNumbers = [];
+      state.feedbackRating = "";
+      state.feedbackComment = "";
+      state.historicalSaveKey = "";
+      state.chatNotes = [];
+      state.reanalysisRound = 0;
+      state.lastContextHash = "";
+      state.caseNumber = "";
+      syncMetaFields();
+      clearPendingChatFiles();
+
+      renderForm(state.category);
+      followupBox.style.display = "none";
+      recContent.className = "empty";
+      recContent.innerHTML = `
+        <h3>Ready to analyze</h3>
+        <p>📦 Category → 📝 Form + 📸 Upload → ✅ Submit → 🤖 Review → 📄 PDF/Share</p>
+      `;
+      syncFeedbackUi();
+      if (state.category) addActivity("Category Selected", state.category);
+      updateFlowState();
+    });
+
+    fbGoodBtn.addEventListener("click", () => setFeedbackRating("good"));
+    fbBadBtn.addEventListener("click", () => setFeedbackRating("bad"));
+    feedbackReason.addEventListener("input", async () => {
+      state.feedbackComment = String(feedbackReason.value || "");
+      state.historicalSaveKey = "";
+      syncFeedbackUi();
+      updateFlowState();
+      if (feedbackReady()) {
+        await ensureCaseNumberAssigned().catch(() => {});
+      }
+    });
+
+    pdfBtn.addEventListener("click", async () => {
+      const ready = await ensureReadyForExport();
+      if (!ready.ok) {
+        alert(ready.reason);
+        return;
+      }
+      const item = await buildPdfItem();
+      if (!item) {
+        alert("Please submit details first to generate PDF.");
+        return;
+      }
+      pushHistory(item);
+      addActivity("PDF Generated", item.filename);
+      downloadPdf(item);
+    });
+
+    shareBtn.addEventListener("click", async () => {
+      const ready = await ensureReadyForExport();
+      if (!ready.ok) {
+        alert(ready.reason);
+        return;
+      }
+      const item = await buildPdfItem();
+      if (!item) {
+        alert("Please submit details first to share PDF.");
+        return;
+      }
+      pushHistory(item);
+      addActivity("PDF Generated", item.filename);
+      await sharePdf(item);
+    });
+
+    historyList.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-h-action]");
+      if (!btn) return;
+      const index = Number(btn.dataset.hIndex);
+      const action = btn.dataset.hAction;
+      if (action === "delete") {
+        removeHistory(index);
+        return;
+      }
+      const item = state.history[index];
+      if (!item) return;
+      if (action === "download") downloadPdf(item);
+      if (action === "share") sharePdf(item);
+    });
+
+    clearHistoryBtn.addEventListener("click", clearHistory);
+
+    chatAttachBtn.addEventListener("click", () => chatFileInput.click());
+    chatFileInput.addEventListener("change", (event) => {
+      addPendingChatFiles(event.target.files, "file picker");
+      event.target.value = "";
+    });
+
+    chatSendBtn.addEventListener("click", handleChatSend);
+    chatInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleChatSend();
+      }
+    });
+
+    ["dragenter", "dragover"].forEach((evt) => {
+      chatPanel.addEventListener(evt, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        chatPanel.classList.add("drag");
+      });
+    });
+    ["dragleave", "dragend"].forEach((evt) => {
+      chatPanel.addEventListener(evt, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        chatPanel.classList.remove("drag");
+      });
+    });
+    chatPanel.addEventListener("drop", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      chatPanel.classList.remove("drag");
+      if (event.dataTransfer?.files?.length) {
+        addPendingChatFiles(event.dataTransfer.files, "drag-drop");
+      }
+    });
+
+    document.addEventListener("paste", (event) => {
+      const items = Array.from(event.clipboardData?.items || []);
+      const files = items
+        .filter((i) => i.kind === "file")
+        .map((i) => i.getAsFile())
+        .filter(Boolean);
+      if (!files.length) return;
+
+      const active = document.activeElement;
+      if (active && reqForm.contains(active)) {
+        event.preventDefault();
+        addFormPhotos(files, "paste");
+      } else if (active && (chatPanel.contains(active) || active === chatInput)) {
+        event.preventDefault();
+        addPendingChatFiles(files, "paste");
+      }
+    });
+
+    function init() {
+      updateWebsiteChangedLabel();
+      bindMetaFields();
+      initCategoryOptions();
+      updateFlowState();
+      renderHistory();
+      syncFeedbackUi();
+      addActivity("Session Ready", "AI Sales Support loaded.");
+      addChatBubble("Select category, fill form, submit, then I will re-analyze every new update.", "ai");
+    }
+
+    init();
+  </script>
+</body>
+</html>
