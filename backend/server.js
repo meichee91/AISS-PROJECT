@@ -67,11 +67,21 @@ async function supabaseRequest(resource, options = {}) {
     url.searchParams.set("on_conflict", onConflict);
   }
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
+  let response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+  } catch (err) {
+    const code = err?.cause?.code || err?.code || "";
+    const message = err?.cause?.message || err?.message || "Unknown fetch error.";
+    if (code === "ENOTFOUND") {
+      throw new Error(`Supabase connection failed: hostname not found for ${supabaseUrl}. Check SUPABASE_URL in backend/.env.`);
+    }
+    throw new Error(`Supabase connection failed: ${message}`);
+  }
 
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;

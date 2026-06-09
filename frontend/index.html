@@ -2275,9 +2275,9 @@
       return true;
     }
 
-    async function ensureReadyForExport() {
-      if (!state.recommendation) {
-        return { ok: false, reason: "Please submit details first." };
+      async function ensureReadyForExport() {
+        if (!state.recommendation) {
+          return { ok: false, reason: "Please submit details first." };
       }
       if (!state.feedbackRating) {
         feedbackPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2289,13 +2289,19 @@
         feedbackPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
         return { ok: false, reason: "Please write feedback for thumbs down before PDF or Share." };
       }
-      const caseNumber = await ensureCaseNumberAssigned();
-      if (!caseNumber) {
-        return { ok: false, reason: "Unable to generate case number right now." };
+        const caseNumber = await ensureCaseNumberAssigned();
+        if (!caseNumber) {
+          return { ok: false, reason: "Unable to generate case number right now." };
+        }
+        try {
+          await saveHistoricalCaseRecord(pdfFilename());
+        } catch (err) {
+          const reason = err?.message || "Unable to save historical case right now.";
+          addActivity("Historical Save Failed", reason);
+          return { ok: false, reason };
+        }
+        return { ok: true };
       }
-      await saveHistoricalCaseRecord(pdfFilename());
-      return { ok: true };
-    }
 
     function bringRecommendationIntoView() {
       const panel = document.querySelector(".recommendation");
@@ -2737,10 +2743,18 @@
       ].join("\n").trim();
     }
 
+    function fallbackExternalShare(item) {
+      downloadPdf(item);
+      openEmailShare(item);
+      addActivity("Share Fallback Used", "Opened email client and downloaded the PDF for manual attachment.");
+      addChatBubble("External share sheet is not available in this browser, so I opened your email app and downloaded the PDF for attachment.", "ai");
+    }
+
     async function sharePdf(item) {
       try {
         if (!navigator.share) {
-          throw new Error("This browser cannot open an external share sheet. Please use a supported browser or device.");
+          fallbackExternalShare(item);
+          return;
         }
         const shareData = {
           title: item.filename,
@@ -2758,9 +2772,7 @@
           addActivity("Share Cancelled", item.filename);
           return;
         }
-        const msg = err.message || "Unable to open external share.";
-        addActivity("Share Failed", msg);
-        addChatBubble(msg, "ai");
+        fallbackExternalShare(item);
       }
     }
 
