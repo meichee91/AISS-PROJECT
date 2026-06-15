@@ -2123,6 +2123,54 @@
       });
     }
 
+    async function buildHistoricalCasePayloadForSave() {
+      const basePayload = JSON.parse(JSON.stringify(state.submission || {}));
+
+      const formPhotos = [];
+      for (const item of state.formPhotos) {
+        const entry = {
+          name: item.file.name,
+          type: item.file.type || "unknown",
+          size: item.file.size
+        };
+        try {
+          entry.dataUrl = await fileToDataUrl(item.file);
+        } catch (err) {
+          entry.readError = err?.message || "Unable to capture image data.";
+        }
+        formPhotos.push(entry);
+      }
+
+      const chatAttachments = [];
+      for (const [noteIndex, note] of state.chatNotes.entries()) {
+        for (const file of (note.files || [])) {
+          const entry = {
+            noteIndex: noteIndex + 1,
+            noteTime: note.time || "",
+            name: file.name,
+            type: file.type || "unknown",
+            size: file.size || 0
+          };
+          if (file.file && String(file.type || "").startsWith("image/")) {
+            try {
+              entry.dataUrl = await fileToDataUrl(file.file);
+            } catch (err) {
+              entry.readError = err?.message || "Unable to capture image data.";
+            }
+          }
+          chatAttachments.push(entry);
+        }
+      }
+
+      basePayload.savedAssets = {
+        formPhotos,
+        chatAttachments,
+        savedAt: nowStamp()
+      };
+
+      return basePayload;
+    }
+
     function buildContextText(payload) {
       const base = [
         payload.application || "",
@@ -2456,6 +2504,7 @@
     async function saveHistoricalCaseRecord(pdfName) {
       const saveKey = `${state.feedbackRating}|${state.feedbackComment.trim()}|${pdfName}`;
       if (state.historicalSaveKey === saveKey) return true;
+      const enrichedCasePayload = await buildHistoricalCasePayloadForSave();
       const response = await fetch("/api/historical-case", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2464,7 +2513,7 @@
           feedbackText: state.feedbackRating === "bad" ? state.feedbackComment.trim() : "",
           pdfName,
           category: state.category,
-          casePayload: state.submission,
+          casePayload: enrichedCasePayload,
           aiResponse: state.recommendation,
           referHistoricalCases: false,
           referencedCaseNumbers: state.referencedCaseNumbers || []
