@@ -11,9 +11,29 @@ services:
         value: 22
       - key: OPENAI_API_KEY
         sync: false
-      - key: SUPABASE_URL
+      - key: AZURE_SQL_SERVER
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: AZURE_SQL_DATABASE
+        value: AISSDB
+      - key: AZURE_SQL_USER
+        sync: false
+      - key: AZURE_SQL_PASSWORD
+        sync: false
+      - key: AZURE_SQL_ENCRYPT
+        value: "true"
+      - key: AZURE_SQL_TRUST_SERVER_CERTIFICATE
+        value: "false"
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_API_VERSION
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT_GPT_5_4
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT_GPT_5_4_MINI
         sync: false
       - key: CATALOG_SYNC_ENABLED
         value: "false"
@@ -21,17 +41,3 @@ services:
         value: "false"
       - key: CATALOG_SYNC_INTERVAL_MINUTES
         value: "4320"
-      - key: SMTP_HOST
-        value: smtp-mail.outlook.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_SECURE
-        value: "false"
-      - key: SYNC_NOTIFY_TO
-        value: chee_1201@hotmail.com
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SYNC_NOTIFY_FROM
-        sync: false

@@ -3,24 +3,48 @@
 AI Sales Support web app with:
 
 - `frontend/index.html` - single-page frontend
-- `backend/server.js` - Express backend serving the frontend and OpenAI API calls
-- `backend/catalog-sync.js` - manual catalog sync logic
-- `supabase-schema.sql` - Supabase tables for case history and product catalog
+- `backend/server.js` - Express backend serving the frontend and AI APIs
+- `backend/catalog-sync.js` - manual product catalog sync logic
+- `azure-sql-schema.sql` - Azure SQL tables for active structured storage
 - `render.yaml` - Render deployment blueprint
+
+## Current working stack
+
+- **AI**: OpenAI API is active now
+- **Database**: Azure SQL is active now
+- **Azure OpenAI**: code support is ready, but it is not active yet because Azure model quota/deployment is still pending
+- **Catalog sync**: manual only
 
 ## Local run
 
-1. Open terminal in `backend`
+1. Open terminal in:
+   `C:\Users\xm100\Documents\Codex\AISS PROJECT\backend`
 2. Install dependencies:
    `npm install`
-3. Create `backend/.env`
-4. Add at least:
+3. Create or update `backend/.env`
+4. Use this minimum setup:
 
    ```env
    OPENAI_API_KEY=your_openai_api_key
    PORT=3000
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+   # Optional future Azure OpenAI cutover
+   AZURE_OPENAI_ENDPOINT=
+   AZURE_OPENAI_API_KEY=
+   AZURE_OPENAI_API_VERSION=
+   AZURE_OPENAI_DEPLOYMENT=
+   AZURE_OPENAI_DEPLOYMENT_GPT_5_4=
+   AZURE_OPENAI_DEPLOYMENT_GPT_5_4_MINI=
+
+   # Active Azure SQL storage
+   AZURE_SQL_SERVER=your-server.database.windows.net
+   AZURE_SQL_DATABASE=AISSDB
+   AZURE_SQL_USER=your_sql_user
+   AZURE_SQL_PASSWORD=your_sql_password
+   AZURE_SQL_ENCRYPT=true
+   AZURE_SQL_TRUST_SERVER_CERTIFICATE=false
+
+   # Manual catalog sync only
    CATALOG_SYNC_ENABLED=false
    CATALOG_SYNC_ON_STARTUP=false
    CATALOG_SYNC_INTERVAL_MINUTES=4320
@@ -31,30 +55,33 @@ AI Sales Support web app with:
 6. Open:
    `http://localhost:3000`
 
-## Deploy to GitHub and Render
+## Azure SQL setup
 
-### 1. Initialize Git
+Run [azure-sql-schema.sql](</C:\Users\xm100\Documents\Codex\AISS PROJECT\azure-sql-schema.sql>) against your Azure SQL database before starting the app.
+
+This creates the tables used for:
+
+- case number sequence
+- historical good/bad cases
+- AI run logs
+- app event logs
+- eval cases
+- product catalog metadata
+
+## GitHub and Render deploy
+
+### 1. Commit and push to GitHub
 
 Run from the project root:
 
 ```powershell
 cd "C:\Users\xm100\Documents\Codex\AISS PROJECT"
-git init
 git add .
-git commit -m "Initial AISS deploy setup"
+git commit -m "Update AISS deployment config"
+git push origin main
 ```
 
-### 2. Push to GitHub
-
-Create an empty GitHub repository first, then run:
-
-```powershell
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git
-git push -u origin main
-```
-
-### 3. Create Render service
+### 2. Create Render service
 
 In Render:
 
@@ -69,32 +96,39 @@ If creating manually, use:
 - Build Command: `npm install`
 - Start Command: `npm start`
 
-### 4. Add Render environment variables
+### 3. Render environment variables
 
 Add these in Render:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+AZURE_SQL_SERVER=your-server.database.windows.net
+AZURE_SQL_DATABASE=AISSDB
+AZURE_SQL_USER=your_sql_user
+AZURE_SQL_PASSWORD=your_sql_password
+AZURE_SQL_ENCRYPT=true
+AZURE_SQL_TRUST_SERVER_CERTIFICATE=false
 CATALOG_SYNC_ENABLED=false
 CATALOG_SYNC_ON_STARTUP=false
 CATALOG_SYNC_INTERVAL_MINUTES=4320
-SMTP_HOST=smtp-mail.outlook.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SYNC_NOTIFY_TO=chee_1201@hotmail.com
-SMTP_USER=your_outlook_email
-SMTP_PASS=your_outlook_password_or_app_password
-SYNC_NOTIFY_FROM=your_outlook_email
 ```
 
-### 5. Deploy
+Optional future Azure OpenAI variables:
 
-After saving environment variables, click deploy.
+```env
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_API_VERSION=
+AZURE_OPENAI_DEPLOYMENT=
+AZURE_OPENAI_DEPLOYMENT_GPT_5_4=
+AZURE_OPENAI_DEPLOYMENT_GPT_5_4_MINI=
+```
+
+Leave those blank until Azure quota is available and the model deployment exists.
 
 ## Notes
 
+- Historical-case reference is currently deactivated in the live UI/backend flow.
 - Product catalog sync is manual-only right now.
-- Historical-case reference is currently deactivated in the live UI and backend.
+- Azure OpenAI support is already coded, but the app will keep using `OPENAI_API_KEY` until the Azure deployment values are filled.
 - Do not commit `backend/.env` or `node_modules`.

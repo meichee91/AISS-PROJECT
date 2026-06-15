@@ -394,6 +394,82 @@
       font-size: 0.7rem;
     }
 
+    .ops-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .ops-stat {
+      border: 1px solid #e4e8ef;
+      border-radius: 10px;
+      padding: 8px;
+      background: #fcfcfe;
+    }
+
+    .ops-stat strong {
+      display: block;
+      font-size: 0.76rem;
+      color: #475064;
+      margin-bottom: 3px;
+    }
+
+    .ops-stat span {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1f2633;
+    }
+
+    .ops-meta {
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #e4e8ef;
+      border-radius: 10px;
+      background: #fcfcfe;
+      font-size: 0.75rem;
+      color: #556071;
+      line-height: 1.45;
+    }
+
+    .ops-meta strong {
+      color: #202735;
+    }
+
+    .ops-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .ops-item {
+      border: 1px solid #e4e8ef;
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+    }
+
+    .ops-item strong {
+      display: block;
+      font-size: 0.76rem;
+      color: #242c38;
+      margin-bottom: 3px;
+    }
+
+    .ops-item div {
+      font-size: 0.71rem;
+      color: #626b7a;
+      line-height: 1.4;
+    }
+
+    .ops-item span {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.67rem;
+      color: #8690a0;
+    }
+
     .share-panel {
       margin-top: 10px;
       border: 1px solid #dbe3ef;
@@ -1169,18 +1245,37 @@
           <form id="reqForm"></form>
         </section>
 
-        <section class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <h3 style="margin:0;">PDF History</h3>
-            <button id="clearHistoryBtn" class="btn-secondary" type="button" style="padding:6px 8px;font-size:0.72rem;">Clear All</button>
-          </div>
-          <p class="tiny">Generated files with download/share/delete.</p>
-          <div id="historyList" class="pdf-history">
-            <p class="tiny">No PDF generated yet.</p>
-          </div>
-        </section>
-      </div>
-    </aside>
+          <section class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <h3 style="margin:0;">PDF History</h3>
+              <button id="clearHistoryBtn" class="btn-secondary" type="button" style="padding:6px 8px;font-size:0.72rem;">Clear All</button>
+            </div>
+            <p class="tiny">Generated files with download/share/delete.</p>
+            <div id="historyList" class="pdf-history">
+              <p class="tiny">No PDF generated yet.</p>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>Phase 2 Ops</h3>
+            <p class="tiny">Lightweight observability, evaluation tracking, and prompt version visibility.</p>
+            <div id="opsSummary" class="ops-summary">
+              <div class="ops-stat"><strong>Prompt</strong><span id="opsPromptVersion">-</span></div>
+              <div class="ops-stat"><strong>Storage</strong><span id="opsStorageMode">-</span></div>
+              <div class="ops-stat"><strong>Last Model</strong><span id="opsLastModel">-</span></div>
+              <div class="ops-stat"><strong>Latency</strong><span id="opsLastLatency">-</span></div>
+            </div>
+            <div id="opsMeta" class="ops-meta">Loading Phase 2 status...</div>
+            <div class="btn-row">
+              <button id="refreshOpsBtn" class="btn-secondary" type="button">Refresh Ops</button>
+              <button id="saveEvalBtn" class="btn-secondary" type="button">Save Current as Eval</button>
+            </div>
+            <div id="opsRuns" class="ops-list">
+              <div class="tiny">No recent AI runs loaded yet.</div>
+            </div>
+          </section>
+        </div>
+      </aside>
 
     <main class="right">
       <section class="panel recommendation">
@@ -1430,11 +1525,11 @@
       Other: ["NIS equivalent after dimensional check", "Regal Rexnord engineered option after review"]
     };
 
-    const state = {
-      category: "",
-      caseNumber: "",
-      userName: "",
-      referHistoricalCases: false,
+      const state = {
+        category: "",
+        caseNumber: "",
+        userName: "",
+        referHistoricalCases: false,
       industry: "",
       submission: null,
       formPhotos: [],
@@ -1448,12 +1543,14 @@
       feedbackComment: "",
       historicalSaveKey: "",
       activeShareItem: null,
-      history: [],
-      reanalysisRound: 0,
-      lastContextHash: "",
-      lastUpdatedAt: "",
-      isAnalyzing: false
-    };
+        history: [],
+        reanalysisRound: 0,
+        lastContextHash: "",
+        lastUpdatedAt: "",
+        isAnalyzing: false,
+        lastAnalysisMeta: null,
+        opsSummary: null
+      };
 
     const categorySelect = document.getElementById("categorySelect");
     const categoryHint = document.getElementById("categoryHint");
@@ -1474,11 +1571,19 @@
     const whatsappShareBtn = document.getElementById("whatsappShareBtn");
     const emailShareBtn = document.getElementById("emailShareBtn");
     const closeShareBtn = document.getElementById("closeShareBtn");
-    const shareNote = document.getElementById("shareNote");
-    const lastUpdatedText = document.getElementById("lastUpdatedText");
-    const historyList = document.getElementById("historyList");
-    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-    const chatPanel = document.getElementById("chatPanel");
+      const shareNote = document.getElementById("shareNote");
+      const lastUpdatedText = document.getElementById("lastUpdatedText");
+      const historyList = document.getElementById("historyList");
+      const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+      const opsPromptVersion = document.getElementById("opsPromptVersion");
+      const opsStorageMode = document.getElementById("opsStorageMode");
+      const opsLastModel = document.getElementById("opsLastModel");
+      const opsLastLatency = document.getElementById("opsLastLatency");
+      const opsMeta = document.getElementById("opsMeta");
+      const opsRuns = document.getElementById("opsRuns");
+      const refreshOpsBtn = document.getElementById("refreshOpsBtn");
+      const saveEvalBtn = document.getElementById("saveEvalBtn");
+      const chatPanel = document.getElementById("chatPanel");
     const chatMsgs = document.getElementById("chatMsgs");
     const chatAttachBtn = document.getElementById("chatAttachBtn");
     const chatFileInput = document.getElementById("chatFileInput");
@@ -1507,11 +1612,31 @@
       });
     }
 
+    async function logClientEvent(eventName, eventDetail, level = "info") {
+      try {
+        await fetch("/api/client-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventName,
+            eventDetail,
+            level,
+            caseNumber: state.submission?.caseNumber || state.caseNumber || "",
+            category: state.category || "",
+            requestId: state.lastAnalysisMeta?.requestId || ""
+          })
+        });
+      } catch (err) {
+        void err;
+      }
+    }
+
     function addActivity(title, detail) {
       const div = document.createElement("div");
       div.className = "act-item";
       div.innerHTML = `<strong>${escapeHtml(title)}</strong><div>${escapeHtml(detail)}</div><span>${nowStamp()}</span>`;
       activityList.prepend(div);
+      logClientEvent(title, detail, title.toLowerCase().includes("failed") ? "error" : "info");
     }
 
     function addChatBubble(text, role) {
@@ -1520,6 +1645,87 @@
       b.textContent = text;
       chatMsgs.appendChild(b);
       chatMsgs.scrollTop = chatMsgs.scrollHeight;
+    }
+
+    function renderOpsSummary(summary) {
+      state.opsSummary = summary || null;
+      opsPromptVersion.textContent = summary?.promptVersion || state.lastAnalysisMeta?.promptVersion || "-";
+      opsStorageMode.textContent = summary?.storageMode || "-";
+      opsLastModel.textContent = state.lastAnalysisMeta?.model || summary?.recentRuns?.[0]?.model || "-";
+      opsLastLatency.textContent = state.lastAnalysisMeta?.latencyMs
+        ? `${state.lastAnalysisMeta.latencyMs}ms`
+        : (summary?.avgLatencyMs ? `${summary.avgLatencyMs}ms` : "-");
+      opsMeta.innerHTML = `
+        <strong>AI runs:</strong> ${summary?.totals?.aiRuns ?? 0} |
+        <strong>Good cases:</strong> ${summary?.totals?.goodCases ?? 0} |
+        <strong>Bad cases:</strong> ${summary?.totals?.badCases ?? 0} |
+        <strong>Eval set:</strong> ${summary?.totals?.evalCases ?? 0}<br/>
+        <strong>Catalog items:</strong> ${summary?.totals?.productCatalogItems ?? 0} |
+        <strong>Last sync:</strong> ${summary?.lastSyncState?.lastFinishedAt ? escapeHtml(summary.lastSyncState.lastFinishedAt) : "Not recorded"}
+      `;
+
+      const runItems = Array.isArray(summary?.recentRuns) ? summary.recentRuns : [];
+      if (!runItems.length) {
+        opsRuns.innerHTML = `<div class="tiny">No recent AI runs loaded yet.</div>`;
+        return;
+      }
+      opsRuns.innerHTML = "";
+      runItems.forEach((item) => {
+        const div = document.createElement("div");
+        div.className = "ops-item";
+        const tokenText = item?.usage_json?.totalTokens
+          ? `${item.usage_json.totalTokens} tokens`
+          : (item?.usage_json?.total_tokens ? `${item.usage_json.total_tokens} tokens` : "token n/a");
+        div.innerHTML = `
+          <strong>${escapeHtml(item.case_number || "No case number")} | ${escapeHtml(item.model || "-")} | ${escapeHtml(item.status || "-")}</strong>
+          <div>${escapeHtml(item.category || "Unknown category")} | ${escapeHtml(tokenText)} | ${escapeHtml(String(item.latency_ms || 0))}ms</div>
+          <span>${escapeHtml(item.created_at || "")}</span>
+        `;
+        opsRuns.appendChild(div);
+      });
+    }
+
+    async function refreshOpsSummary() {
+      try {
+        const response = await fetch("/api/admin/summary");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to load Phase 2 summary.");
+        }
+        renderOpsSummary(data);
+      } catch (err) {
+        opsMeta.textContent = err.message || "Unable to load Phase 2 summary.";
+      }
+    }
+
+    async function saveCurrentAsEvalCase() {
+      if (!state.submission || !state.recommendation) {
+        alert("Generate a recommendation first before saving an evaluation case.");
+        return;
+      }
+      if (!state.submission.caseNumber && !state.caseNumber) {
+        await ensureCaseNumberAssigned();
+      }
+      const response = await fetch("/api/evals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caseNumber: state.submission.caseNumber || state.caseNumber,
+          category: state.category,
+          userName: state.userName,
+          rating: state.feedbackRating || "unrated",
+          evaluationNote: state.feedbackComment || "Saved from Phase 2 ops panel.",
+          sourceRunRequestId: state.lastAnalysisMeta?.requestId || "",
+          casePayload: state.submission,
+          aiResponse: state.recommendation
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Unable to save evaluation case.");
+      }
+      addActivity("Evaluation Case Saved", data?.message || "Current case saved into eval set.");
+      await refreshOpsSummary();
     }
 
     function setFlow(done) {
@@ -2154,13 +2360,14 @@
       }
       parsed.brands = safeBrands.slice(0, 2);
 
-      if (!Array.isArray(parsed.followUpQuestions) || !parsed.followUpQuestions.length) {
-        parsed.followUpQuestions = [...(categories[state.category]?.followups || [])].slice(0, 3);
+        if (!Array.isArray(parsed.followUpQuestions) || !parsed.followUpQuestions.length) {
+          parsed.followUpQuestions = [...(categories[state.category]?.followups || [])].slice(0, 3);
+        }
+        parsed.followUpQuestions = parsed.followUpQuestions.slice(0, 3);
+        parsed.retrievedCaseNumbers = Array.isArray(data?.retrieved_case_numbers) ? data.retrieved_case_numbers : [];
+        parsed.analysisMeta = data?.analysis_meta || null;
+        return parsed;
       }
-      parsed.followUpQuestions = parsed.followUpQuestions.slice(0, 3);
-      parsed.retrievedCaseNumbers = Array.isArray(data?.retrieved_case_numbers) ? data.retrieved_case_numbers : [];
-      return parsed;
-    }
 
     function buildInputSummary(payload) {
       const lines = [
@@ -2272,6 +2479,7 @@
         data?.saved === false ? "Historical Save Skipped" : "Historical Case Saved",
         data?.message || `${state.submission?.caseNumber || state.caseNumber} saved for ${state.feedbackRating} feedback.`
       );
+      await refreshOpsSummary();
       return true;
     }
 
@@ -2361,18 +2569,19 @@
       setAnalysisLoading(true);
       addActivity("Recommendation Updating", "Refreshing analysis with latest inputs.");
 
-      try {
-        const fullPayload = buildAnalysisPayload(payload);
-        const aiResult = await requestAIRecommendation(fullPayload);
-        const context = buildContextText(payload);
-        const hash = simpleHash(context);
+        try {
+          const fullPayload = buildAnalysisPayload(payload);
+          const aiResult = await requestAIRecommendation(fullPayload);
+          const context = buildContextText(payload);
+          const hash = simpleHash(context);
         const changed = hash !== state.lastContextHash;
-        state.lastContextHash = hash;
-        state.reanalysisRound += 1;
-        state.referencedCaseNumbers = aiResult.retrievedCaseNumbers || [];
-        state.feedbackRating = "";
-        state.feedbackComment = "";
-        state.historicalSaveKey = "";
+          state.lastContextHash = hash;
+          state.reanalysisRound += 1;
+          state.referencedCaseNumbers = aiResult.retrievedCaseNumbers || [];
+          state.lastAnalysisMeta = aiResult.analysisMeta || null;
+          state.feedbackRating = "";
+          state.feedbackComment = "";
+          state.historicalSaveKey = "";
 
         const referenceIntro = "";
 
@@ -2399,23 +2608,25 @@
           : generateFollowups(payload);
 
         renderRecommendation();
-        renderFollowups();
-        syncFeedbackUi();
-        updateFlowState();
-        bringRecommendationIntoView();
-        addActivity("Recommendation Updated", `Reassessment completed (run ${state.reanalysisRound}).`);
-      } catch (err) {
-        const normalized = String(err?.message || "Unknown error");
-        const safeMsg = normalized.includes("Background API key is not configured")
-          ? "Backend API key is missing. Please set OPENAI_API_KEY in backend .env and restart server."
-          : normalized;
-        addActivity("Recommendation Update Failed", err.message || "Unknown error.");
-        addChatBubble(`Unable to refresh recommendation right now: ${safeMsg}`, "ai");
-      } finally {
-        state.isAnalyzing = false;
-        setAnalysisLoading(false);
+          renderFollowups();
+          syncFeedbackUi();
+          updateFlowState();
+          bringRecommendationIntoView();
+          addActivity("Recommendation Updated", `Reassessment completed (run ${state.reanalysisRound}).`);
+          await refreshOpsSummary();
+        } catch (err) {
+          const normalized = String(err?.message || "Unknown error");
+          const safeMsg = normalized.includes("Background API key is not configured")
+            ? "Backend API key is missing. Please set OPENAI_API_KEY in backend .env and restart server."
+            : normalized;
+          addActivity("Recommendation Update Failed", err.message || "Unknown error.");
+          addChatBubble(`Unable to refresh recommendation right now: ${safeMsg}`, "ai");
+          await refreshOpsSummary();
+        } finally {
+          state.isAnalyzing = false;
+          setAnalysisLoading(false);
+        }
       }
-    }
 
     function renderRecommendation() {
       if (!state.recommendation) return;
@@ -2445,6 +2656,10 @@
             <h3>A. Input Summary</h3>
             <p class="rec-text">${escapeHtml(r.summary.join("\n"))}</p>
             ${photoHtml}
+          </section>
+          <section class="rec-block">
+            <h3>Run Metadata</h3>
+            <p class="rec-text">Prompt version: ${escapeHtml(state.lastAnalysisMeta?.promptVersion || "N/A")}\nModel: ${escapeHtml(state.lastAnalysisMeta?.model || "N/A")}\nLatency: ${escapeHtml(state.lastAnalysisMeta?.latencyMs ? `${state.lastAnalysisMeta.latencyMs}ms` : "N/A")}</p>
           </section>
           <section class="rec-block">
             <h3>B. Problem Understanding</h3>
@@ -2522,6 +2737,9 @@
         "",
         r.runInfo || "",
         r.runNote || "",
+        `Prompt version: ${state.lastAnalysisMeta?.promptVersion || "N/A"}`,
+        `Model: ${state.lastAnalysisMeta?.model || "N/A"}`,
+        `Latency: ${state.lastAnalysisMeta?.latencyMs ? `${state.lastAnalysisMeta.latencyMs}ms` : "N/A"}`,
         "",
         "A. Input Summary",
         ...r.summary,
@@ -2945,6 +3163,7 @@
       state.reanalysisRound = 0;
       state.lastContextHash = "";
       state.caseNumber = "";
+      state.lastAnalysisMeta = null;
       syncMetaFields();
       clearPendingChatFiles();
 
@@ -3020,6 +3239,15 @@
     });
 
     clearHistoryBtn.addEventListener("click", clearHistory);
+    refreshOpsBtn.addEventListener("click", refreshOpsSummary);
+    saveEvalBtn.addEventListener("click", async () => {
+      try {
+        await saveCurrentAsEvalCase();
+      } catch (err) {
+        addActivity("Eval Save Failed", err.message || "Unable to save evaluation case.");
+        alert(err.message || "Unable to save evaluation case.");
+      }
+    });
 
     chatAttachBtn.addEventListener("click", () => chatFileInput.click());
     chatFileInput.addEventListener("change", (event) => {
@@ -3083,6 +3311,7 @@
       updateFlowState();
       renderHistory();
       syncFeedbackUi();
+      refreshOpsSummary();
       addActivity("Session Ready", "AI Sales Support loaded.");
       addChatBubble("Select category, fill form, submit, then I will re-analyze every new update.", "ai");
     }

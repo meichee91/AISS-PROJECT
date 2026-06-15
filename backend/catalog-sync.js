@@ -396,7 +396,7 @@ async function fetchHtml(url, fetchImpl = fetch) {
 }
 
 async function syncCatalogProducts({
-  supabaseRequest,
+  db,
   fetchImpl = fetch,
   logger = console,
   categoriesFilter,
@@ -487,38 +487,24 @@ async function syncCatalogProducts({
     if (products.length) {
       for (let i = 0; i < products.length; i += 200) {
         const chunk = products.slice(i, i + 200);
-        await supabaseRequest("product_catalog", {
-          method: "POST",
-          upsert: true,
-          onConflict: "product_url",
-          body: chunk
-        });
+        await db.upsertProductCatalog(chunk);
       }
     }
   }
 
   for (const [categoryKey, seenUrls] of seenUrlsByCategory.entries()) {
-    await supabaseRequest(`product_catalog?app_category_slug=eq.${encodeURIComponent(categoryKey)}&product_url=not.in.(${Array.from(seenUrls).map((url) => `"${url}"`).join(",") || '""'})`, {
-      method: "PATCH",
-      body: {
-        is_active: false,
-        last_synced_at: new Date().toISOString()
-      }
-    }).catch((err) => {
+    await db.deactivateMissingProducts(categoryKey, Array.from(seenUrls)).catch((err) => {
       logger.warn(`[catalog-sync] ${categoryKey}: inactive mark skipped -> ${err.message}`);
     });
   }
 
-  await supabaseRequest("product_sync_runs", {
-    method: "POST",
-    body: {
-      run_id: summary.runId,
-      sync_scope: "scheduled_catalog",
-      status: "completed",
-      details_json: summary,
-      started_at: summary.startedAt,
-      finished_at: new Date().toISOString()
-    }
+  await db.saveProductSyncRun({
+    runId: summary.runId,
+    syncScope: "scheduled_catalog",
+    status: "completed",
+    details: summary,
+    startedAt: summary.startedAt,
+    finishedAt: new Date().toISOString()
   }).catch((err) => {
     logger.warn(`[catalog-sync] run logging skipped -> ${err.message}`);
   });
@@ -526,12 +512,10 @@ async function syncCatalogProducts({
   return summary;
 }
 
-async function fetchCatalogProductsForCase({ supabaseRequest, caseContext, limit = 5 }) {
+async function fetchCatalogProductsForCase({ db, caseContext, limit = 5 }) {
   if (!caseContext?.category) return [];
   const appCategorySlug = slugify(caseContext.category);
-  const rows = await supabaseRequest(
-    `product_catalog?app_category_slug=eq.${encodeURIComponent(appCategorySlug)}&is_active=eq.true&select=product_name,sku,brand,product_url,price_text,currency,availability,short_description,specs_json,searchable_text,source_label,last_synced_at&limit=250`
-  ).catch(() => []);
+  const rows = await db.fetchCatalogProductsByCategory(appCategorySlug, 250).catch(() => []);
 
   const targetText = [
     caseContext.category,
