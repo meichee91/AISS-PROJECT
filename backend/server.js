@@ -47,7 +47,7 @@ const CASE_STATUS = {
   ARCHIVED: "Archived"
 };
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "25mb" }));
 
 function chooseModel(payload) {
   const textSize = JSON.stringify(payload || {}).length;

@@ -3228,6 +3228,50 @@
       });
     }
 
+    function imageLoadFromDataUrl(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Unable to load image."));
+        img.src = dataUrl;
+      });
+    }
+
+    async function fileToCompactDataUrl(file, options = {}) {
+      const type = String(file?.type || "");
+      if (!type.startsWith("image/")) {
+        return fileToDataUrl(file);
+      }
+
+      const maxWidth = Number(options.maxWidth || 1280);
+      const maxHeight = Number(options.maxHeight || 1280);
+      const quality = Number(options.quality || 0.78);
+      const targetType = String(options.type || "image/jpeg");
+      const originalDataUrl = await fileToDataUrl(file);
+      const img = await imageLoadFromDataUrl(originalDataUrl);
+
+      const widthRatio = maxWidth / (img.naturalWidth || img.width || maxWidth);
+      const heightRatio = maxHeight / (img.naturalHeight || img.height || maxHeight);
+      const ratio = Math.min(1, widthRatio, heightRatio);
+      const outputWidth = Math.max(1, Math.round((img.naturalWidth || img.width || maxWidth) * ratio));
+      const outputHeight = Math.max(1, Math.round((img.naturalHeight || img.height || maxHeight) * ratio));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return originalDataUrl;
+      }
+      ctx.drawImage(img, 0, 0, outputWidth, outputHeight);
+
+      try {
+        return canvas.toDataURL(targetType, quality);
+      } catch (err) {
+        return originalDataUrl;
+      }
+    }
+
     async function buildHistoricalCasePayloadForSave() {
       const basePayload = JSON.parse(JSON.stringify(state.submission || {}));
 
@@ -3239,7 +3283,12 @@
           size: item.file.size
         };
         try {
-          entry.dataUrl = await fileToDataUrl(item.file);
+          entry.dataUrl = await fileToCompactDataUrl(item.file, {
+            maxWidth: 1280,
+            maxHeight: 1280,
+            quality: 0.78,
+            type: "image/jpeg"
+          });
         } catch (err) {
           entry.readError = err?.message || "Unable to capture image data.";
         }
@@ -3258,7 +3307,12 @@
           };
           if (file.file && String(file.type || "").startsWith("image/")) {
             try {
-              entry.dataUrl = await fileToDataUrl(file.file);
+              entry.dataUrl = await fileToCompactDataUrl(file.file, {
+                maxWidth: 1280,
+                maxHeight: 1280,
+                quality: 0.78,
+                type: "image/jpeg"
+              });
             } catch (err) {
               entry.readError = err?.message || "Unable to capture image data.";
             }
