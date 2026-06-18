@@ -18,12 +18,25 @@ BEGIN
     folder_path NVARCHAR(400) NOT NULL,
     rating NVARCHAR(20) NOT NULL DEFAULT 'good',
     feedback_text NVARCHAR(MAX) NOT NULL DEFAULT '',
+    user_comment NVARCHAR(MAX) NOT NULL DEFAULT '',
+    case_status NVARCHAR(60) NOT NULL DEFAULT 'AI Generated',
+    expert_decision NVARCHAR(60) NOT NULL DEFAULT '',
+    expert_rating NVARCHAR(40) NOT NULL DEFAULT '',
+    expert_comment NVARCHAR(MAX) NOT NULL DEFAULT '',
+    corrected_recommendation NVARCHAR(MAX) NOT NULL DEFAULT '',
+    knowledge_value NVARCHAR(20) NOT NULL DEFAULT '',
+    reviewer_name NVARCHAR(255) NOT NULL DEFAULT '',
+    learning_eligible BIT NOT NULL DEFAULT 0,
+    reference_type NVARCHAR(20) NOT NULL DEFAULT '',
     refer_historical_cases BIT NOT NULL DEFAULT 0,
     referenced_case_numbers NVARCHAR(MAX) NOT NULL DEFAULT '[]',
     case_payload NVARCHAR(MAX) NOT NULL,
     ai_response NVARCHAR(MAX) NOT NULL,
-    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    reviewed_at DATETIME2 NULL,
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
   );
+  CREATE UNIQUE INDEX historical_case_good_case_number_uq ON dbo.historical_case_good (case_number);
   CREATE INDEX historical_case_good_category_slug_idx ON dbo.historical_case_good (category_slug, created_at DESC);
 END;
 
@@ -38,14 +51,81 @@ BEGIN
     folder_path NVARCHAR(400) NOT NULL,
     rating NVARCHAR(20) NOT NULL DEFAULT 'bad',
     feedback_text NVARCHAR(MAX) NOT NULL DEFAULT '',
+    user_comment NVARCHAR(MAX) NOT NULL DEFAULT '',
+    case_status NVARCHAR(60) NOT NULL DEFAULT 'AI Generated',
+    expert_decision NVARCHAR(60) NOT NULL DEFAULT '',
+    expert_rating NVARCHAR(40) NOT NULL DEFAULT '',
+    expert_comment NVARCHAR(MAX) NOT NULL DEFAULT '',
+    corrected_recommendation NVARCHAR(MAX) NOT NULL DEFAULT '',
+    knowledge_value NVARCHAR(20) NOT NULL DEFAULT '',
+    reviewer_name NVARCHAR(255) NOT NULL DEFAULT '',
+    learning_eligible BIT NOT NULL DEFAULT 0,
+    reference_type NVARCHAR(20) NOT NULL DEFAULT '',
     refer_historical_cases BIT NOT NULL DEFAULT 0,
     referenced_case_numbers NVARCHAR(MAX) NOT NULL DEFAULT '[]',
     case_payload NVARCHAR(MAX) NOT NULL,
     ai_response NVARCHAR(MAX) NOT NULL,
-    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    reviewed_at DATETIME2 NULL,
+    created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
   );
+  CREATE UNIQUE INDEX historical_case_bad_case_number_uq ON dbo.historical_case_bad (case_number);
   CREATE INDEX historical_case_bad_category_slug_idx ON dbo.historical_case_bad (category_slug, created_at DESC);
 END;
+
+IF COL_LENGTH('dbo.historical_case_good', 'user_comment') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD user_comment NVARCHAR(MAX) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'case_status') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD case_status NVARCHAR(60) NOT NULL DEFAULT 'AI Generated';
+IF COL_LENGTH('dbo.historical_case_good', 'expert_decision') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD expert_decision NVARCHAR(60) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'expert_rating') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD expert_rating NVARCHAR(40) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'expert_comment') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD expert_comment NVARCHAR(MAX) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'corrected_recommendation') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD corrected_recommendation NVARCHAR(MAX) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'knowledge_value') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD knowledge_value NVARCHAR(20) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'reviewer_name') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD reviewer_name NVARCHAR(255) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'learning_eligible') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD learning_eligible BIT NOT NULL DEFAULT 0;
+IF COL_LENGTH('dbo.historical_case_good', 'reference_type') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD reference_type NVARCHAR(20) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_good', 'reviewed_at') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD reviewed_at DATETIME2 NULL;
+IF COL_LENGTH('dbo.historical_case_good', 'updated_at') IS NULL
+  ALTER TABLE dbo.historical_case_good ADD updated_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME();
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'historical_case_good_case_number_uq' AND object_id = OBJECT_ID('dbo.historical_case_good'))
+  CREATE UNIQUE INDEX historical_case_good_case_number_uq ON dbo.historical_case_good (case_number);
+
+IF COL_LENGTH('dbo.historical_case_bad', 'user_comment') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD user_comment NVARCHAR(MAX) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'case_status') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD case_status NVARCHAR(60) NOT NULL DEFAULT 'AI Generated';
+IF COL_LENGTH('dbo.historical_case_bad', 'expert_decision') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD expert_decision NVARCHAR(60) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'expert_rating') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD expert_rating NVARCHAR(40) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'expert_comment') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD expert_comment NVARCHAR(MAX) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'corrected_recommendation') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD corrected_recommendation NVARCHAR(MAX) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'knowledge_value') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD knowledge_value NVARCHAR(20) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'reviewer_name') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD reviewer_name NVARCHAR(255) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'learning_eligible') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD learning_eligible BIT NOT NULL DEFAULT 0;
+IF COL_LENGTH('dbo.historical_case_bad', 'reference_type') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD reference_type NVARCHAR(20) NOT NULL DEFAULT '';
+IF COL_LENGTH('dbo.historical_case_bad', 'reviewed_at') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD reviewed_at DATETIME2 NULL;
+IF COL_LENGTH('dbo.historical_case_bad', 'updated_at') IS NULL
+  ALTER TABLE dbo.historical_case_bad ADD updated_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME();
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'historical_case_bad_case_number_uq' AND object_id = OBJECT_ID('dbo.historical_case_bad'))
+  CREATE UNIQUE INDEX historical_case_bad_case_number_uq ON dbo.historical_case_bad (case_number);
 
 IF OBJECT_ID('dbo.product_catalog', 'U') IS NULL
 BEGIN

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Sales Support</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b31217'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='34'%3E%F0%9F%A4%96%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b31217'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='34'%3E%E2%9A%99%3C/text%3E%3C/svg%3E" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
@@ -63,17 +63,24 @@
     }
 
     .bot {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: var(--red);
+      width: 58px;
+      height: 44px;
+      border-radius: 0;
+      background: transparent;
       display: grid;
       place-items: center;
-      color: #fff;
+      color: #e8e8ea;
       font-size: 20px;
       font-weight: 700;
       position: relative;
       line-height: 1;
+      overflow: visible;
+    }
+
+    .bot svg {
+      width: 56px;
+      height: 40px;
+      display: block;
     }
 
     .bot::after { display: none; }
@@ -394,11 +401,66 @@
       font-size: 0.7rem;
     }
 
+    .ops-card {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .ops-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 13px;
+      background: linear-gradient(145deg, #fff8f8, #fff2f4);
+      color: #7d1115;
+      border: 0;
+      border-bottom: 1px solid #f0d4d8;
+      border-radius: 0;
+      text-align: left;
+    }
+
+    .ops-toggle small {
+      display: block;
+      margin-top: 3px;
+      color: #7d7f89;
+      font-size: 0.72rem;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    .ops-toggle-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid #ead3d8;
+      display: grid;
+      place-items: center;
+      color: #8d1519;
+      font-size: 0.95rem;
+      flex: 0 0 auto;
+      transition: transform 0.18s ease;
+    }
+
+    .ops-card.open .ops-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .ops-body {
+      display: none;
+      padding: 11px;
+    }
+
+    .ops-card.open .ops-body {
+      display: block;
+    }
+
     .ops-summary {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 8px;
     }
 
     .ops-stat {
@@ -980,20 +1042,38 @@
       gap: 7px;
     }
 
+    .chat-intro {
+      margin-bottom: 8px;
+    }
+
+    .chat-intro .tiny {
+      font-size: 0.72rem;
+      color: #7b8392;
+      line-height: 1.45;
+    }
+
     .chat-tools {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 128px minmax(0, 1fr);
+      gap: 8px;
+      align-items: stretch;
     }
 
     .drop-hint {
       border: 1px dashed #d6dce7;
-      border-radius: 8px;
-      padding: 5px 7px;
+      border-radius: 12px;
+      padding: 10px;
       background: #fafbfd;
       color: #5d6677;
-      font-size: 0.7rem;
+      font-size: 0.72rem;
+      line-height: 1.4;
+      min-height: 116px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 7px;
     }
 
     .chat.drag .drop-hint {
@@ -1004,10 +1084,11 @@
 
     .cfiles {
       border: 1px solid #e7ebf2;
-      border-radius: 8px;
-      padding: 5px;
+      border-radius: 12px;
+      padding: 8px;
       background: #fcfdff;
-      max-height: 78px;
+      min-height: 116px;
+      max-height: 116px;
       overflow: auto;
       display: flex;
       flex-direction: column;
@@ -1104,17 +1185,39 @@
       box-shadow: 0 8px 22px rgba(30, 42, 62, 0.08);
     }
 
-    .thinking-bot {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      display: grid;
-      place-items: center;
-      background: var(--red);
-      color: #fff;
-      font-size: 25px;
-      animation: bot-think 1.1s ease-in-out infinite;
+    .thinking-gears {
+      width: 84px;
+      height: 62px;
+      position: relative;
       flex: 0 0 auto;
+    }
+
+    .gear-wheel {
+      position: absolute;
+      color: #e6e6e8;
+      filter: drop-shadow(8px 6px 0 #a5a8ae);
+    }
+
+    .gear-wheel svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .gear-wheel.big {
+      width: 54px;
+      height: 54px;
+      right: 2px;
+      bottom: 0;
+      animation: gear-spin 1.6s linear infinite;
+    }
+
+    .gear-wheel.small {
+      width: 34px;
+      height: 34px;
+      left: 4px;
+      top: 5px;
+      animation: gear-spin-reverse 1.25s linear infinite;
     }
 
     .thinking-title {
@@ -1130,10 +1233,451 @@
       line-height: 1.4;
     }
 
-    @keyframes bot-think {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      35% { transform: translateY(-3px) rotate(-2deg); }
-      70% { transform: translateY(1px) rotate(2deg); }
+    @keyframes gear-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes gear-spin-reverse {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+
+    .multi-select {
+      position: relative;
+      margin-top: 2px;
+    }
+
+    .multi-select[open] {
+      z-index: 9;
+    }
+
+    .multi-select summary {
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .multi-select summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .multi-select-trigger {
+      border: 1px solid #d6dce7;
+      border-radius: 12px;
+      background: #fff;
+      min-height: 46px;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .multi-select[open] .multi-select-trigger,
+    .multi-select:hover .multi-select-trigger {
+      border-color: #c7d0de;
+      box-shadow: 0 8px 22px rgba(33, 43, 60, 0.08);
+    }
+
+    .multi-select-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .multi-select-label {
+      font-size: 0.82rem;
+      color: #293241;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
+    .multi-select-count {
+      font-size: 0.7rem;
+      color: #7a8391;
+      line-height: 1.2;
+    }
+
+    .multi-select-caret {
+      font-size: 0.82rem;
+      color: #7a8391;
+      flex: 0 0 auto;
+      transition: transform 0.15s ease;
+    }
+
+    .multi-select[open] .multi-select-caret {
+      transform: rotate(180deg);
+    }
+
+    .multi-select-menu {
+      margin-top: 7px;
+      border: 1px solid #dbe0e8;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 18px 34px rgba(31, 39, 54, 0.12);
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      max-height: 228px;
+      overflow: auto;
+    }
+
+    .multi-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 9px;
+      border: 1px solid #dbe0e8;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .multi-check:hover {
+      border-color: #cfd6e1;
+      background: #fcfdff;
+    }
+
+    .multi-check input {
+      width: auto;
+      margin: 1px 0 0;
+      accent-color: var(--red);
+      flex: 0 0 auto;
+    }
+
+    .multi-check span {
+      font-size: 0.8rem;
+      line-height: 1.35;
+      color: #2d3542;
+      font-weight: 500;
+    }
+
+    .multi-check input:checked + span {
+      color: #861318;
+      font-weight: 700;
+    }
+
+    .field-help {
+      margin: 5px 0 0;
+      font-size: 0.72rem;
+      color: #707887;
+      line-height: 1.35;
+    }
+
+    .expert-comment-wrap {
+      flex: 1 1 100%;
+      display: none;
+      gap: 6px;
+      flex-direction: column;
+      margin-top: 6px;
+    }
+
+    .expert-comment-wrap.active {
+      display: flex;
+    }
+
+    .expert-comment-wrap label,
+    .expert-comment-wrap strong {
+      font-size: 0.76rem;
+      color: #2b3442;
+      font-weight: 700;
+    }
+
+    .expert-comment-wrap textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .report-card {
+      border: 1px solid #dbe3ef;
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .report-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .report-toolbar input,
+    .report-toolbar select {
+      font-size: 0.76rem;
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid #d7deea;
+      background: #fff;
+    }
+
+    .report-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .report-stat {
+      border: 1px solid #e7edf5;
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #fafcff;
+    }
+
+    .report-stat strong {
+      display: block;
+      font-size: 0.72rem;
+      color: #667082;
+      margin-bottom: 3px;
+    }
+
+    .report-stat span {
+      font-size: 0.96rem;
+      color: #1d2734;
+      font-weight: 700;
+    }
+
+    .case-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .case-item {
+      border: 1px solid #e2e8f1;
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .case-item:hover {
+      border-color: #c9d2de;
+      box-shadow: 0 6px 16px rgba(24, 34, 48, 0.06);
+    }
+
+    .case-item-head,
+    .case-item-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .case-item-head strong {
+      font-size: 0.8rem;
+      color: #202937;
+    }
+
+    .case-item-meta {
+      margin-top: 5px;
+      font-size: 0.7rem;
+      color: #6c7686;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .status-draft,
+    .status-ai-generated {
+      background: #f2f4f7;
+      color: #546072;
+      border-color: #d7dee7;
+    }
+
+    .status-pending-expert-review {
+      background: #fff7e9;
+      color: #8d5c08;
+      border-color: #ecd59f;
+    }
+
+    .status-verified-good {
+      background: #edf9f0;
+      color: #1f7a3f;
+      border-color: #b7e0c3;
+    }
+
+    .status-verified-corrected {
+      background: #eef4ff;
+      color: #2557b8;
+      border-color: #c5d6ff;
+    }
+
+    .status-verified-rejected {
+      background: #fff0f1;
+      color: #a11d33;
+      border-color: #f0bcc7;
+    }
+
+    .status-archived {
+      background: #f5f2fb;
+      color: #5e438e;
+      border-color: #dacdf0;
+    }
+
+    .detail-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 24, 38, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 60;
+    }
+
+    .detail-modal.active {
+      display: flex;
+    }
+
+    .detail-panel {
+      width: min(1100px, 100%);
+      max-height: min(88vh, 980px);
+      overflow: auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .detail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .detail-head h3 {
+      margin: 0;
+      font-size: 1.02rem;
+      color: #1f2937;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-card {
+      border: 1px solid #e4e9f1;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+
+    .detail-card.full {
+      grid-column: 1 / -1;
+    }
+
+    .detail-card h4 {
+      margin: 0 0 8px;
+      font-size: 0.82rem;
+      color: #1f2937;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 6px;
+      font-size: 0.76rem;
+      color: #3a4454;
+    }
+
+    .detail-list div strong {
+      color: #1f2937;
+    }
+
+    .detail-text-block {
+      margin: 0;
+      padding: 10px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid #e7edf5;
+      white-space: pre-wrap;
+      line-height: 1.45;
+      font-size: 0.76rem;
+      color: #344051;
+    }
+
+    .detail-assets {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 10px;
+    }
+
+    .detail-asset {
+      border: 1px solid #e4e8f0;
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+      font-size: 0.7rem;
+      color: #475163;
+      display: grid;
+      gap: 6px;
+    }
+
+    .detail-asset img {
+      width: 100%;
+      height: 94px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #f2f5fa;
+    }
+
+    .review-form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .review-form textarea,
+    .review-form input,
+    .review-form select {
+      width: 100%;
+      border: 1px solid #d8dfe9;
+      border-radius: 10px;
+      padding: 10px 11px;
+      font: inherit;
+      background: #fff;
+    }
+
+    .review-form textarea {
+      min-height: 98px;
+      resize: vertical;
+    }
+
+    .review-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 1080px) {
+      .detail-grid,
+      .review-grid,
+      .report-toolbar,
+      .report-summary {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 1080px) {
@@ -1155,6 +1699,14 @@
       .bottom {
         grid-template-columns: 1fr;
       }
+
+      .chat-tools {
+        grid-template-columns: 1fr;
+      }
+
+      .multi-select-menu {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -1162,7 +1714,22 @@
   <div class="app">
     <aside class="panel left">
       <div class="brand">
-        <div class="bot">🤖</div>
+        <div class="bot" aria-hidden="true">
+          <svg viewBox="0 0 64 46" fill="none">
+            <g transform="translate(2 2)">
+              <g style="filter:drop-shadow(6px 5px 0 #a8adb3)">
+                <path d="M16.9 1.7a1.9 1.9 0 0 1 3.8 0l.3 2.4a12.3 12.3 0 0 1 2.9 1.2l2-1.4a1.9 1.9 0 0 1 2.7.5l1.9 3.3a1.9 1.9 0 0 1-.7 2.6l-2.1 1.2c.1.6.2 1.3.3 1.9l2.4.6a1.9 1.9 0 0 1 1.4 1.8v3.8a1.9 1.9 0 0 1-1.4 1.8l-2.4.6a12.2 12.2 0 0 1-.3 1.9l2.1 1.2a1.9 1.9 0 0 1 .7 2.6l-1.9 3.3a1.9 1.9 0 0 1-2.7.5l-2-1.4a12.3 12.3 0 0 1-2.9 1.2l-.3 2.4a1.9 1.9 0 0 1-3.8 0l-.3-2.4a12.3 12.3 0 0 1-2.9-1.2l-2 1.4a1.9 1.9 0 0 1-2.7-.5l-1.9-3.3a1.9 1.9 0 0 1 .7-2.6l2.1-1.2a12.2 12.2 0 0 1-.3-1.9l-2.4-.6A1.9 1.9 0 0 1 3 19.6v-3.8A1.9 1.9 0 0 1 4.4 14l2.4-.6c0-.6.1-1.3.3-1.9l-2.1-1.2a1.9 1.9 0 0 1-.7-2.6l1.9-3.3a1.9 1.9 0 0 1 2.7-.5l2 1.4A12.3 12.3 0 0 1 14 4.1l.3-2.4Z" fill="currentColor"/>
+                <circle cx="18.8" cy="17.7" r="7.1" fill="#ffffff"/>
+              </g>
+            </g>
+            <g transform="translate(22 1)">
+              <g style="filter:drop-shadow(7px 6px 0 #a8adb3)">
+                <path d="M18.5 1.8a2.1 2.1 0 0 1 4.2 0l.32 2.68a13.6 13.6 0 0 1 3.28 1.36l2.28-1.56a2.1 2.1 0 0 1 2.98.56l2.1 3.64a2.1 2.1 0 0 1-.75 2.9l-2.34 1.35c.16.68.24 1.4.29 2.14l2.66.66a2.1 2.1 0 0 1 1.58 2.03v4.22a2.1 2.1 0 0 1-1.58 2.03l-2.66.66c-.05.74-.13 1.46-.29 2.14l2.34 1.35a2.1 2.1 0 0 1 .75 2.9l-2.1 3.64a2.1 2.1 0 0 1-2.98.56l-2.28-1.56a13.6 13.6 0 0 1-3.28 1.36l-.32 2.68a2.1 2.1 0 0 1-4.2 0l-.32-2.68a13.6 13.6 0 0 1-3.28-1.36l-2.28 1.56a2.1 2.1 0 0 1-2.98-.56l-2.1-3.64a2.1 2.1 0 0 1 .75-2.9l2.34-1.35a13.3 13.3 0 0 1-.29-2.14l-2.66-.66A2.1 2.1 0 0 1 2.4 22.8v-4.22a2.1 2.1 0 0 1 1.58-2.03l2.66-.66c.05-.74.13-1.46.29-2.14l-2.34-1.35a2.1 2.1 0 0 1-.75-2.9l2.1-3.64a2.1 2.1 0 0 1 2.98-.56l2.28 1.56a13.6 13.6 0 0 1 3.28-1.36l.32-2.68Z" fill="currentColor"/>
+                <circle cx="20.6" cy="20.7" r="10.2" fill="#ffffff"/>
+              </g>
+            </g>
+          </svg>
+        </div>
         <div>
           <div class="brand-title">
             <h1>AI Sales Support</h1>
@@ -1181,7 +1748,7 @@
               <div class="flow-step active" data-step="1" title="Category">📦</div>
               <div class="flow-step" data-step="2" title="Form + Upload">📝</div>
               <div class="flow-step" data-step="3" title="Submit">✅</div>
-              <div class="flow-step" data-step="4" title="Review">🤖</div>
+              <div class="flow-step" data-step="4" title="Review">⚙</div>
               <div class="flow-step" data-step="5" title="Feedback">💬</div>
               <div class="flow-step" data-step="6" title="PDF / Share">📄</div>
             </div>
@@ -1256,22 +1823,66 @@
             </div>
           </section>
 
-          <section class="card">
-            <h3>Phase 2 Ops</h3>
-            <p class="tiny">Lightweight observability, evaluation tracking, and prompt version visibility.</p>
-            <div id="opsSummary" class="ops-summary">
-              <div class="ops-stat"><strong>Prompt</strong><span id="opsPromptVersion">-</span></div>
-              <div class="ops-stat"><strong>Storage</strong><span id="opsStorageMode">-</span></div>
-              <div class="ops-stat"><strong>Last Model</strong><span id="opsLastModel">-</span></div>
-              <div class="ops-stat"><strong>Latency</strong><span id="opsLastLatency">-</span></div>
+          <section id="opsCard" class="card ops-card">
+            <button id="opsToggleBtn" class="ops-toggle" type="button" aria-expanded="false" aria-controls="opsBody">
+              <span>
+                <strong>AI Evaluation</strong>
+                <small>Open this to review AI quality, response speed, and recent evaluation records.</small>
+              </span>
+              <span class="ops-toggle-icon">v</span>
+            </button>
+            <div id="opsBody" class="ops-body">
+              <div id="opsSummary" class="ops-summary">
+                <div class="ops-stat"><strong>Prompt</strong><span id="opsPromptVersion">-</span></div>
+                <div class="ops-stat"><strong>Storage</strong><span id="opsStorageMode">-</span></div>
+                <div class="ops-stat"><strong>Last Model</strong><span id="opsLastModel">-</span></div>
+                <div class="ops-stat"><strong>Latency</strong><span id="opsLastLatency">-</span></div>
+              </div>
+              <div id="opsMeta" class="ops-meta">Loading AI evaluation status...</div>
+              <div class="btn-row">
+                <button id="refreshOpsBtn" class="btn-secondary" type="button">Refresh Evaluation</button>
+                <button id="saveEvalBtn" class="btn-secondary" type="button">Save Current as Example</button>
+              </div>
+              <div id="opsRuns" class="ops-list">
+                <div class="tiny">No recent AI evaluation data loaded yet.</div>
+              </div>
             </div>
-            <div id="opsMeta" class="ops-meta">Loading Phase 2 status...</div>
-            <div class="btn-row">
-              <button id="refreshOpsBtn" class="btn-secondary" type="button">Refresh Ops</button>
-              <button id="saveEvalBtn" class="btn-secondary" type="button">Save Current as Eval</button>
-            </div>
-            <div id="opsRuns" class="ops-list">
-              <div class="tiny">No recent AI runs loaded yet.</div>
+          </section>
+
+          <section id="caseReportCard" class="card ops-card report-card">
+            <button id="caseReportToggleBtn" class="ops-toggle" type="button" aria-expanded="false" aria-controls="caseReportBody">
+              <span>
+                <strong>Case Report</strong>
+                <small>See AI evaluation, user rating, expert verification status, and future learning eligibility.</small>
+              </span>
+              <span class="ops-toggle-icon">v</span>
+            </button>
+            <div id="caseReportBody" class="ops-body">
+              <div class="report-summary">
+                <div class="report-stat"><strong>Total Cases</strong><span id="reportTotalCases">-</span></div>
+                <div class="report-stat"><strong>Pending Expert Review</strong><span id="reportPendingCases">-</span></div>
+                <div class="report-stat"><strong>Learning Eligible</strong><span id="reportLearningCases">-</span></div>
+                <div class="report-stat"><strong>Verified - Rejected</strong><span id="reportRejectedCases">-</span></div>
+              </div>
+              <div class="report-toolbar">
+                <select id="caseStatusFilter">
+                  <option value="">All statuses</option>
+                  <option value="Draft">Draft</option>
+                  <option value="AI Generated">AI Generated</option>
+                  <option value="Pending Expert Review">Pending Expert Review</option>
+                  <option value="Verified - Good">Verified - Good</option>
+                  <option value="Verified - Corrected">Verified - Corrected</option>
+                  <option value="Verified - Rejected">Verified - Rejected</option>
+                  <option value="Archived">Archived</option>
+                </select>
+                <input id="caseSearchInput" type="text" placeholder="Search case number, category, or comments" />
+              </div>
+              <div class="btn-row">
+                <button id="refreshCaseReportBtn" class="btn-secondary" type="button">Refresh Cases</button>
+              </div>
+              <div id="caseReportList" class="case-list">
+                <div class="tiny">No case report loaded yet.</div>
+              </div>
             </div>
           </section>
         </div>
@@ -1286,7 +1897,7 @@
 
         <div id="recContent" class="empty">
           <h3>Ready to analyze</h3>
-          <p>📦 Category → 📝 Form + 📸 Upload → ✅ Submit → 🤖 Review → 📄 PDF/Share</p>
+          <p>Select a category, complete the requirement form, upload supporting photos if needed, then submit for analysis.</p>
         </div>
 
         <div id="followupBox" class="followup" style="display:none;"></div>
@@ -1313,6 +1924,10 @@
               <span class="fb-label">Needs work</span>
             </button>
             <textarea id="feedbackReason" class="fb-reason" style="display:none;" placeholder="Tell us what was wrong, missing, or should be improved"></textarea>
+            <div id="expertCommentWrap" class="expert-comment-wrap">
+              <strong>Comment to Product Expert</strong>
+              <textarea id="expertCommentInput" placeholder="Add context, urgency, customer expectation, or checks the Product Expert should know before reviewing this case."></textarea>
+            </div>
             <div id="feedbackHelper" class="feedback-helper">Choose Good or Needs work before PDF or Share. Needs work requires feedback.</div>
           </div>
         </div>
@@ -1342,18 +1957,22 @@
 
       <section class="bottom">
         <section class="panel chat" id="chatPanel">
-          <div class="p-title">Support Chat</div>
+          <div class="p-title">Re-analysis</div>
           <div id="chatMsgs" class="msgs"></div>
 
           <div class="chat-input">
-            <div class="chat-tools">
-              <button id="chatAttachBtn" class="btn-secondary" type="button">Attach Photo/Document</button>
-              <input id="chatFileInput" type="file" multiple style="display:none;" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.json,.xml" />
-              <span class="tiny">Upload or drag files into chat panel.</span>
+            <div class="chat-intro">
+              <span class="tiny">Add extra findings, photos, or files here when you want AI to reassess the same case.</span>
             </div>
-            <div class="drop-hint">Drop photo/document here to attach for re-analysis.</div>
-            <div id="chatFiles" class="cfiles">
-              <div class="cfiles-empty">No chat attachment selected.</div>
+            <div class="chat-tools">
+              <div class="drop-hint">
+                <button id="chatAttachBtn" class="btn-secondary" type="button">Attach Photo/Document</button>
+                <input id="chatFileInput" type="file" multiple style="display:none;" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.json,.xml" />
+                <span>Drop photo or document here, or use the attach button.</span>
+              </div>
+              <div id="chatFiles" class="cfiles">
+                <div class="cfiles-empty">No re-analysis attachment selected.</div>
+              </div>
             </div>
             <div class="chat-send">
               <input id="chatInput" type="text" placeholder="Add extra issue details, checks, constraints..." />
@@ -1363,11 +1982,28 @@
         </section>
 
         <section class="panel activity">
-          <div class="p-title">Support Activity</div>
+          <div class="p-title">AI Activity Log</div>
           <div id="activityList" class="acts"></div>
         </section>
       </section>
     </main>
+  </div>
+
+  <div id="caseDetailModal" class="detail-modal" aria-hidden="true">
+    <div class="detail-panel">
+      <div class="detail-head">
+        <div>
+          <h3 id="caseDetailTitle">Case Detail</h3>
+          <div id="caseDetailSubtitle" class="tiny">Review AI output, user feedback, expert verification, and learning status.</div>
+        </div>
+        <button id="closeCaseDetailBtn" class="btn-secondary" type="button">Close</button>
+      </div>
+      <div id="caseDetailBody" class="detail-grid">
+        <div class="detail-card full">
+          <div class="tiny">Select a case from Case Report to load details.</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -1525,6 +2161,102 @@
       Other: ["NIS equivalent after dimensional check", "Regal Rexnord engineered option after review"]
     };
 
+    const mainIssueOptions = {
+      Coupling: [
+        "Misalignment",
+        "Element wear or breakage",
+        "Vibration",
+        "Noise",
+        "Overload or shock load",
+        "Frequent failure",
+        "Wrong sizing",
+        "Need replacement / upgrade",
+        "Other"
+      ],
+      Belt: [
+        "Slip",
+        "Belt breakage",
+        "Premature wear",
+        "Noise / squealing",
+        "Tracking issue",
+        "Heat damage",
+        "Tension issue",
+        "Pulley wear",
+        "Need replacement / upgrade",
+        "Other"
+      ],
+      Chain: [
+        "Elongation",
+        "Chain breakage",
+        "Wear at pin / bush",
+        "Noise",
+        "Jumping / skipping",
+        "Lubrication issue",
+        "Sprocket wear",
+        "Corrosion / contamination",
+        "Need replacement / upgrade",
+        "Other"
+      ],
+      Gearbox: [
+        "Leakage",
+        "Overheating",
+        "Abnormal noise",
+        "Vibration",
+        "Low output torque",
+        "Bearing failure",
+        "Seal failure",
+        "Gear wear / damage",
+        "Need replacement / upgrade",
+        "Other"
+      ],
+      "Electric Motor": [
+        "Motor trip",
+        "Overheating",
+        "Abnormal noise",
+        "Vibration",
+        "Bearing failure",
+        "Insulation / winding issue",
+        "Low starting torque",
+        "Speed issue",
+        "Need replacement / upgrade",
+        "Other"
+      ],
+      Other: [
+        "Frequent failure",
+        "Performance drop",
+        "Noise / vibration",
+        "Overheating",
+        "Leakage",
+        "Wear / damage",
+        "Need replacement / upgrade",
+        "Other"
+      ]
+    };
+
+    Object.entries(categories).forEach(([name, config]) => {
+      const issueField = {
+        id: "mainIssue",
+        label: "Main issue",
+        type: "multiselect",
+        options: mainIssueOptions[name] || ["Other"],
+        help: "Select one or more main issues that best match the current case."
+      };
+      const insertAt = config.fields.findIndex((field) => field.id === "application");
+      if (insertAt >= 0) {
+        config.fields.splice(insertAt + 1, 0, issueField);
+      }
+    });
+
+      const CASE_STATUS = {
+        DRAFT: "Draft",
+        AI_GENERATED: "AI Generated",
+        PENDING_EXPERT_REVIEW: "Pending Expert Review",
+        VERIFIED_GOOD: "Verified - Good",
+        VERIFIED_CORRECTED: "Verified - Corrected",
+        VERIFIED_REJECTED: "Verified - Rejected",
+        ARCHIVED: "Archived"
+      };
+
       const state = {
         category: "",
         caseNumber: "",
@@ -1541,6 +2273,8 @@
       referencedCaseNumbers: [],
       feedbackRating: "",
       feedbackComment: "",
+      userExpertComment: "",
+      currentCaseStatus: "",
       historicalSaveKey: "",
       activeShareItem: null,
         history: [],
@@ -1549,7 +2283,9 @@
         lastUpdatedAt: "",
         isAnalyzing: false,
         lastAnalysisMeta: null,
-        opsSummary: null
+        opsSummary: null,
+        caseReportItems: [],
+        activeCaseDetail: null
       };
 
     const categorySelect = document.getElementById("categorySelect");
@@ -1565,6 +2301,8 @@
     const fbGoodBtn = document.getElementById("fbGoodBtn");
     const fbBadBtn = document.getElementById("fbBadBtn");
     const feedbackReason = document.getElementById("feedbackReason");
+    const expertCommentWrap = document.getElementById("expertCommentWrap");
+    const expertCommentInput = document.getElementById("expertCommentInput");
     const feedbackHelper = document.getElementById("feedbackHelper");
     const sharePanel = document.getElementById("sharePanel");
     const nativeShareBtn = document.getElementById("nativeShareBtn");
@@ -1583,6 +2321,24 @@
       const opsRuns = document.getElementById("opsRuns");
       const refreshOpsBtn = document.getElementById("refreshOpsBtn");
       const saveEvalBtn = document.getElementById("saveEvalBtn");
+      const opsCard = document.getElementById("opsCard");
+      const opsToggleBtn = document.getElementById("opsToggleBtn");
+      const caseReportCard = document.getElementById("caseReportCard");
+      const caseReportToggleBtn = document.getElementById("caseReportToggleBtn");
+      const caseReportBody = document.getElementById("caseReportBody");
+      const caseStatusFilter = document.getElementById("caseStatusFilter");
+      const caseSearchInput = document.getElementById("caseSearchInput");
+      const refreshCaseReportBtn = document.getElementById("refreshCaseReportBtn");
+      const caseReportList = document.getElementById("caseReportList");
+      const reportTotalCases = document.getElementById("reportTotalCases");
+      const reportPendingCases = document.getElementById("reportPendingCases");
+      const reportLearningCases = document.getElementById("reportLearningCases");
+      const reportRejectedCases = document.getElementById("reportRejectedCases");
+      const caseDetailModal = document.getElementById("caseDetailModal");
+      const caseDetailTitle = document.getElementById("caseDetailTitle");
+      const caseDetailSubtitle = document.getElementById("caseDetailSubtitle");
+      const caseDetailBody = document.getElementById("caseDetailBody");
+      const closeCaseDetailBtn = document.getElementById("closeCaseDetailBtn");
       const chatPanel = document.getElementById("chatPanel");
     const chatMsgs = document.getElementById("chatMsgs");
     const chatAttachBtn = document.getElementById("chatAttachBtn");
@@ -1639,6 +2395,68 @@
       logClientEvent(title, detail, title.toLowerCase().includes("failed") ? "error" : "info");
     }
 
+    function toggleOpsCard(forceOpen) {
+      if (!opsCard || !opsToggleBtn) return;
+      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !opsCard.classList.contains("open");
+      opsCard.classList.toggle("open", shouldOpen);
+      opsToggleBtn.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    }
+
+    function toggleCaseReportCard(forceOpen) {
+      if (!caseReportCard || !caseReportToggleBtn) return;
+      const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !caseReportCard.classList.contains("open");
+      caseReportCard.classList.toggle("open", shouldOpen);
+      caseReportToggleBtn.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    }
+
+    function statusClass(status) {
+      return `status-${String(status || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "draft"}`;
+    }
+
+    function statusPill(status) {
+      return `<span class="status-pill ${statusClass(status)}">${escapeHtml(status || "-")}</span>`;
+    }
+
+    function buildCaseLink(caseNumber) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("case", caseNumber);
+      return url.toString();
+    }
+
+    function normalizeFieldValue(value) {
+      if (Array.isArray(value)) {
+        return value.filter(Boolean).join(", ");
+      }
+      return String(value || "").trim();
+    }
+
+    function formatFriendlyError(message, fallback) {
+      const text = String(message || fallback || "Something went wrong.").trim();
+      const simple = text.replace(/\s+/g, " ");
+
+      if (/please rate|please write feedback|please submit details|please select a category|please enter user name|generate a recommendation first/i.test(simple)) {
+        return simple;
+      }
+
+      if (/unable to generate case number/i.test(simple)) {
+        return "Case number could not be generated right now. Please contact AISS admin.";
+      }
+
+      if (/unable to save historical case|azure sql|analysis request failed|empty response|request failed|timed out|network|fetch/i.test(simple)) {
+        return `${fallback || "The system could not complete this request right now."} Please contact AISS admin.`;
+      }
+
+      if (/eval/i.test(simple) && /unable/i.test(simple)) {
+        return "AI evaluation data could not be saved right now. Please contact AISS admin.";
+      }
+
+      return simple;
+    }
+
+    function showUserMessage(message, fallback) {
+      alert(formatFriendlyError(message, fallback));
+    }
+
     function addChatBubble(text, role) {
       const b = document.createElement("div");
       b.className = `bubble ${role}`;
@@ -1650,23 +2468,28 @@
     function renderOpsSummary(summary) {
       state.opsSummary = summary || null;
       opsPromptVersion.textContent = summary?.promptVersion || state.lastAnalysisMeta?.promptVersion || "-";
-      opsStorageMode.textContent = summary?.storageMode || "-";
+      opsStorageMode.textContent = summary?.storageMode === "azure-sql"
+        ? "Azure SQL"
+        : (summary?.storageMode === "local" ? "Local only" : (summary?.storageMode || "-"));
       opsLastModel.textContent = state.lastAnalysisMeta?.model || summary?.recentRuns?.[0]?.model || "-";
       opsLastLatency.textContent = state.lastAnalysisMeta?.latencyMs
         ? `${state.lastAnalysisMeta.latencyMs}ms`
         : (summary?.avgLatencyMs ? `${summary.avgLatencyMs}ms` : "-");
       opsMeta.innerHTML = `
-        <strong>AI runs:</strong> ${summary?.totals?.aiRuns ?? 0} |
-        <strong>Good cases:</strong> ${summary?.totals?.goodCases ?? 0} |
-        <strong>Bad cases:</strong> ${summary?.totals?.badCases ?? 0} |
-        <strong>Eval set:</strong> ${summary?.totals?.evalCases ?? 0}<br/>
-        <strong>Catalog items:</strong> ${summary?.totals?.productCatalogItems ?? 0} |
-        <strong>Last sync:</strong> ${summary?.lastSyncState?.lastFinishedAt ? escapeHtml(summary.lastSyncState.lastFinishedAt) : "Not recorded"}
+        <strong>Total AI checks:</strong> ${summary?.totals?.aiRuns ?? 0} |
+        <strong>Approved examples:</strong> ${summary?.totals?.goodCases ?? 0} |
+        <strong>Needs-work examples:</strong> ${summary?.totals?.badCases ?? 0} |
+        <strong>Saved evaluation cases:</strong> ${summary?.totals?.evalCases ?? 0}<br/>
+        <strong>Product catalog items:</strong> ${summary?.totals?.productCatalogItems ?? 0} |
+        <strong>Last catalog sync:</strong> ${summary?.lastSyncState?.lastFinishedAt ? escapeHtml(summary.lastSyncState.lastFinishedAt) : "Not recorded"}<br/>
+        <strong>Pending expert review:</strong> ${summary?.statusCounts?.[CASE_STATUS.PENDING_EXPERT_REVIEW] ?? 0} |
+        <strong>Verified - Good:</strong> ${summary?.statusCounts?.[CASE_STATUS.VERIFIED_GOOD] ?? 0} |
+        <strong>Verified - Corrected:</strong> ${summary?.statusCounts?.[CASE_STATUS.VERIFIED_CORRECTED] ?? 0}
       `;
 
       const runItems = Array.isArray(summary?.recentRuns) ? summary.recentRuns : [];
       if (!runItems.length) {
-        opsRuns.innerHTML = `<div class="tiny">No recent AI runs loaded yet.</div>`;
+        opsRuns.innerHTML = `<div class="tiny">No recent AI activity loaded yet.</div>`;
         return;
       }
       opsRuns.innerHTML = "";
@@ -1676,8 +2499,9 @@
         const tokenText = item?.usage_json?.totalTokens
           ? `${item.usage_json.totalTokens} tokens`
           : (item?.usage_json?.total_tokens ? `${item.usage_json.total_tokens} tokens` : "token n/a");
+        const statusText = item.status === "success" ? "Completed" : "Attention needed";
         div.innerHTML = `
-          <strong>${escapeHtml(item.case_number || "No case number")} | ${escapeHtml(item.model || "-")} | ${escapeHtml(item.status || "-")}</strong>
+          <strong>${escapeHtml(item.case_number || "No case number")} | ${escapeHtml(item.model || "-")} | ${escapeHtml(statusText)}</strong>
           <div>${escapeHtml(item.category || "Unknown category")} | ${escapeHtml(tokenText)} | ${escapeHtml(String(item.latency_ms || 0))}ms</div>
           <span>${escapeHtml(item.created_at || "")}</span>
         `;
@@ -1690,17 +2514,242 @@
         const response = await fetch("/api/admin/summary");
         const data = await response.json();
         if (!response.ok) {
-          throw new Error(data?.error || "Unable to load Phase 2 summary.");
+          throw new Error(data?.error || "Unable to load AI evaluation data.");
         }
         renderOpsSummary(data);
       } catch (err) {
-        opsMeta.textContent = err.message || "Unable to load Phase 2 summary.";
+        opsMeta.textContent = formatFriendlyError(err.message, "Unable to load AI evaluation data.");
+      }
+    }
+
+    function renderCaseReportSummary(items) {
+      reportTotalCases.textContent = String(items.length);
+      reportPendingCases.textContent = String(items.filter((item) => item.caseStatus === CASE_STATUS.PENDING_EXPERT_REVIEW).length);
+      reportLearningCases.textContent = String(items.filter((item) => item.learningEligible).length);
+      reportRejectedCases.textContent = String(items.filter((item) => item.caseStatus === CASE_STATUS.VERIFIED_REJECTED).length);
+    }
+
+    function renderCaseReportList(items) {
+      state.caseReportItems = items;
+      renderCaseReportSummary(items);
+      caseReportList.innerHTML = "";
+      if (!items.length) {
+        caseReportList.innerHTML = `<div class="tiny">No matching case found yet.</div>`;
+        return;
+      }
+      items.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "case-item";
+        row.dataset.caseNumber = item.caseNumber;
+        row.innerHTML = `
+          <div class="case-item-head">
+            <strong>${escapeHtml(item.caseNumber)}</strong>
+            ${statusPill(item.caseStatus)}
+          </div>
+          <div class="case-item-meta">
+            <span>${escapeHtml(item.category || "Unknown category")} | User rating: ${escapeHtml(item.rating || "-")}</span>
+            <span>${escapeHtml(item.updatedAt || item.createdAt || "")}</span>
+          </div>
+        `;
+        row.addEventListener("click", () => openCaseDetail(item.caseNumber));
+        caseReportList.appendChild(row);
+      });
+    }
+
+    async function refreshCaseReport() {
+      try {
+        const params = new URLSearchParams();
+        if (caseStatusFilter.value) params.set("status", caseStatusFilter.value);
+        if (caseSearchInput.value.trim()) params.set("search", caseSearchInput.value.trim());
+        params.set("limit", "120");
+        const response = await fetch(`/api/cases?${params.toString()}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to load case report.");
+        }
+        renderCaseReportList(Array.isArray(data.items) ? data.items : []);
+      } catch (err) {
+        caseReportList.innerHTML = `<div class="tiny">${escapeHtml(formatFriendlyError(err.message, "Unable to load case report."))}</div>`;
+      }
+    }
+
+    function closeCaseDetail() {
+      state.activeCaseDetail = null;
+      caseDetailModal.classList.remove("active");
+      caseDetailModal.setAttribute("aria-hidden", "true");
+    }
+
+    function renderCaseAssets(item) {
+      const formPhotos = item?.casePayload?.savedAssets?.formPhotos || [];
+      const chatAttachments = item?.casePayload?.savedAssets?.chatAttachments || [];
+      const allAssets = [...formPhotos, ...chatAttachments];
+      if (!allAssets.length) {
+        return `<div class="tiny">No saved photos or attachments were captured with this case.</div>`;
+      }
+      return `
+        <div class="detail-assets">
+          ${allAssets.map((asset) => `
+            <div class="detail-asset">
+              ${asset.dataUrl ? `<img src="${asset.dataUrl}" alt="${escapeHtml(asset.name || "attachment")}" />` : `<div class="tiny">No preview</div>`}
+              <strong>${escapeHtml(asset.name || "attachment")}</strong>
+              <div>${escapeHtml(asset.type || "unknown")} | ${escapeHtml(fileSizeText(asset.size || 0))}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderCaseDetail(item) {
+      state.activeCaseDetail = item;
+      caseDetailTitle.textContent = `${item.caseNumber} | ${item.category}`;
+      caseDetailSubtitle.innerHTML = `${statusPill(item.caseStatus)} <span style="margin-left:8px;">User rating: <strong>${escapeHtml(item.rating || "-")}</strong></span>`;
+      const aiBrands = Array.isArray(item?.aiResponse?.brands) ? item.aiResponse.brands.join(", ") : "";
+      const aiParts = Array.isArray(item?.aiResponse?.parts) ? item.aiResponse.parts.join(", ") : "";
+      caseDetailBody.innerHTML = `
+        <div class="detail-card">
+          <h4>Case Summary</h4>
+          <div class="detail-list">
+            <div><strong>Case number:</strong> ${escapeHtml(item.caseNumber)}</div>
+            <div><strong>Category:</strong> ${escapeHtml(item.category)}</div>
+            <div><strong>Created:</strong> ${escapeHtml(item.createdAt || "")}</div>
+            <div><strong>Updated:</strong> ${escapeHtml(item.updatedAt || "")}</div>
+            <div><strong>Recall link:</strong> <a href="${escapeHtml(buildCaseLink(item.caseNumber))}" target="_blank" rel="noopener noreferrer">${escapeHtml(buildCaseLink(item.caseNumber))}</a></div>
+          </div>
+        </div>
+        <div class="detail-card">
+          <h4>User Review</h4>
+          <div class="detail-list">
+            <div><strong>User rating:</strong> ${escapeHtml(item.rating || "-")}</div>
+            <div><strong>Needs-work note:</strong></div>
+            <div class="detail-text-block">${escapeHtml(item.feedbackText || "None")}</div>
+            <div><strong>Comment to Product Expert:</strong></div>
+            <div class="detail-text-block">${escapeHtml(item.userComment || "None")}</div>
+          </div>
+        </div>
+        <div class="detail-card full">
+          <h4>AI Evaluation</h4>
+          <div class="detail-list">
+            <div><strong>Suggested brands:</strong> ${escapeHtml(aiBrands || "Not recorded")}</div>
+            <div><strong>Suggested parts:</strong> ${escapeHtml(aiParts || "Not recorded")}</div>
+            <div><strong>Suggested by AI:</strong></div>
+            <div class="detail-text-block">${escapeHtml(item?.aiResponse?.suggestedByAI || "Not recorded")}</div>
+            <div><strong>Problem understanding:</strong></div>
+            <div class="detail-text-block">${escapeHtml(item?.aiResponse?.problemUnderstanding || "Not recorded")}</div>
+            <div><strong>Recommendation:</strong></div>
+            <div class="detail-text-block">${escapeHtml((item?.aiResponse?.recommendations || []).join("\n") || "Not recorded")}</div>
+          </div>
+        </div>
+        <div class="detail-card full">
+          <h4>Photos and Attachments</h4>
+          ${renderCaseAssets(item)}
+        </div>
+        <div class="detail-card full">
+          <h4>Expert Verification</h4>
+          <form id="expertReviewForm" class="review-form">
+            <div class="review-grid">
+              <div>
+                <label for="expertDecisionSelect">Final status</label>
+                <select id="expertDecisionSelect">
+                  <option value="${CASE_STATUS.VERIFIED_GOOD}" ${item.caseStatus === CASE_STATUS.VERIFIED_GOOD ? "selected" : ""}>${CASE_STATUS.VERIFIED_GOOD}</option>
+                  <option value="${CASE_STATUS.VERIFIED_CORRECTED}" ${item.caseStatus === CASE_STATUS.VERIFIED_CORRECTED ? "selected" : ""}>${CASE_STATUS.VERIFIED_CORRECTED}</option>
+                  <option value="${CASE_STATUS.VERIFIED_REJECTED}" ${item.caseStatus === CASE_STATUS.VERIFIED_REJECTED ? "selected" : ""}>${CASE_STATUS.VERIFIED_REJECTED}</option>
+                  <option value="${CASE_STATUS.ARCHIVED}" ${item.caseStatus === CASE_STATUS.ARCHIVED ? "selected" : ""}>${CASE_STATUS.ARCHIVED}</option>
+                </select>
+              </div>
+              <div>
+                <label for="expertRatingSelect">Expert rating</label>
+                <select id="expertRatingSelect">
+                  <option value="">Select</option>
+                  <option value="Correct" ${item.expertRating === "Correct" ? "selected" : ""}>Correct</option>
+                  <option value="Partially Correct" ${item.expertRating === "Partially Correct" ? "selected" : ""}>Partially Correct</option>
+                  <option value="Incorrect" ${item.expertRating === "Incorrect" ? "selected" : ""}>Incorrect</option>
+                </select>
+              </div>
+              <div>
+                <label for="knowledgeValueSelect">Knowledge value</label>
+                <select id="knowledgeValueSelect">
+                  <option value="">Select</option>
+                  <option value="High" ${item.knowledgeValue === "High" ? "selected" : ""}>High</option>
+                  <option value="Medium" ${item.knowledgeValue === "Medium" ? "selected" : ""}>Medium</option>
+                  <option value="Low" ${item.knowledgeValue === "Low" ? "selected" : ""}>Low</option>
+                </select>
+              </div>
+              <div>
+                <label for="reviewerNameInput">Reviewer</label>
+                <input id="reviewerNameInput" type="text" value="${escapeHtml(item.reviewerName || "")}" placeholder="Product Expert name" />
+              </div>
+            </div>
+            <div>
+              <label for="expertCommentArea">Expert comment</label>
+              <textarea id="expertCommentArea" placeholder="Explain the technical verification, concern, or decision reason.">${escapeHtml(item.expertComment || "")}</textarea>
+            </div>
+            <div>
+              <label for="correctedRecommendationArea">Correct recommendation</label>
+              <textarea id="correctedRecommendationArea" placeholder="Required when status is Verified - Corrected.">${escapeHtml(item.correctedRecommendation || "")}</textarea>
+            </div>
+            <div class="btn-row">
+              <button id="saveExpertReviewBtn" class="btn-primary" type="submit">Save Expert Review</button>
+            </div>
+          </form>
+        </div>
+      `;
+      caseDetailModal.classList.add("active");
+      caseDetailModal.setAttribute("aria-hidden", "false");
+      document.getElementById("expertReviewForm")?.addEventListener("submit", saveExpertReview);
+    }
+
+    async function openCaseDetail(caseNumber) {
+      try {
+        const response = await fetch(`/api/cases/${encodeURIComponent(caseNumber)}`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data?.item) {
+          throw new Error(data?.error || "Unable to load case detail.");
+        }
+        renderCaseDetail(data.item);
+      } catch (err) {
+        showUserMessage(err.message, "Case detail could not be loaded right now.");
+      }
+    }
+
+    async function saveExpertReview(event) {
+      event.preventDefault();
+      try {
+        if (!state.activeCaseDetail) return;
+        const caseStatus = document.getElementById("expertDecisionSelect")?.value || "";
+        const expertRating = document.getElementById("expertRatingSelect")?.value || "";
+        const knowledgeValue = document.getElementById("knowledgeValueSelect")?.value || "";
+        const reviewerName = document.getElementById("reviewerNameInput")?.value.trim() || "";
+        const expertComment = document.getElementById("expertCommentArea")?.value.trim() || "";
+        const correctedRecommendation = document.getElementById("correctedRecommendationArea")?.value.trim() || "";
+        const response = await fetch(`/api/cases/${encodeURIComponent(state.activeCaseDetail.caseNumber)}/expert-review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caseStatus,
+            expertRating,
+            knowledgeValue,
+            reviewerName,
+            expertComment,
+            correctedRecommendation
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data?.saved) {
+          throw new Error(data?.error || "Unable to save expert review.");
+        }
+        addActivity("Expert Review Saved", `${state.activeCaseDetail.caseNumber} updated to ${caseStatus}.`);
+        renderCaseDetail(data.item);
+        await refreshCaseReport();
+        await refreshOpsSummary();
+      } catch (err) {
+        showUserMessage(err.message, "Expert review could not be saved right now.");
       }
     }
 
     async function saveCurrentAsEvalCase() {
       if (!state.submission || !state.recommendation) {
-        alert("Generate a recommendation first before saving an evaluation case.");
+        showUserMessage("Generate a recommendation first before saving an evaluation case.");
         return;
       }
       if (!state.submission.caseNumber && !state.caseNumber) {
@@ -1714,7 +2763,7 @@
           category: state.category,
           userName: state.userName,
           rating: state.feedbackRating || "unrated",
-          evaluationNote: state.feedbackComment || "Saved from Phase 2 ops panel.",
+          evaluationNote: state.feedbackComment || "Saved from AI evaluation panel.",
           sourceRunRequestId: state.lastAnalysisMeta?.requestId || "",
           casePayload: state.submission,
           aiResponse: state.recommendation
@@ -1722,9 +2771,9 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || "Unable to save evaluation case.");
+        throw new Error(data?.error || "Unable to save AI evaluation case.");
       }
-      addActivity("Evaluation Case Saved", data?.message || "Current case saved into eval set.");
+      addActivity("AI Evaluation Saved", data?.message || "Current case saved into the AI evaluation set.");
       await refreshOpsSummary();
     }
 
@@ -1888,7 +2937,13 @@
     }
 
     function addPendingChatFiles(files, source) {
-      const list = Array.from(files || []);
+      const existing = new Set(state.pendingChatFiles.map((p) => `${p.file.name}|${p.file.size}|${p.file.lastModified}`));
+      const list = Array.from(files || []).filter((file) => {
+        const key = `${file.name}|${file.size}|${file.lastModified}`;
+        if (existing.has(key)) return false;
+        existing.add(key);
+        return true;
+      });
       if (!list.length) return;
       list.forEach((file) => {
         state.pendingChatFiles.push({
@@ -1915,7 +2970,7 @@
     function renderPendingChatFiles() {
       chatFiles.innerHTML = "";
       if (!state.pendingChatFiles.length) {
-        chatFiles.innerHTML = `<div class="cfiles-empty">No chat attachment selected.</div>`;
+        chatFiles.innerHTML = `<div class="cfiles-empty">No re-analysis attachment selected.</div>`;
         return;
       }
       state.pendingChatFiles.forEach((item) => {
@@ -1944,9 +2999,47 @@
       });
     }
 
+    function updateMultiSelectSummary(container) {
+      if (!container) return;
+      const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
+      const labelEl = container.querySelector(".multi-select-label");
+      const countEl = container.querySelector(".multi-select-count");
+      if (!labelEl || !countEl) return;
+      labelEl.textContent = checked.length ? checked.join(", ") : "Select main issue(s)";
+      countEl.textContent = checked.length ? `${checked.length} selected` : "You can tick more than one";
+    }
+
     function createFieldInput(field) {
       let el;
-      if (field.type === "select") {
+      if (field.type === "multiselect") {
+        el = document.createElement("details");
+        el.className = "multi-select";
+        el.id = field.id;
+        el.setAttribute("data-field-type", "multiselect");
+        const summary = document.createElement("summary");
+        summary.className = "multi-select-trigger";
+        summary.innerHTML = `
+          <span class="multi-select-text">
+            <span class="multi-select-label">Select main issue(s)</span>
+            <span class="multi-select-count">You can tick more than one</span>
+          </span>
+          <span class="multi-select-caret">▼</span>
+        `;
+        el.appendChild(summary);
+        const menu = document.createElement("div");
+        menu.className = "multi-select-menu";
+        field.options.forEach((option, index) => {
+          const label = document.createElement("label");
+          label.className = "multi-check";
+          label.innerHTML = `
+            <input type="checkbox" data-field-group="${field.id}" value="${escapeHtml(option)}" id="${field.id}_${index}" />
+            <span>${escapeHtml(option)}</span>
+          `;
+          menu.appendChild(label);
+        });
+        el.appendChild(menu);
+        el.addEventListener("change", () => updateMultiSelectSummary(el));
+      } else if (field.type === "select") {
         el = document.createElement("select");
         const defaultOpt = document.createElement("option");
         defaultOpt.value = "";
@@ -1967,8 +3060,10 @@
         el.placeholder = field.placeholder || "";
         if (field.type === "number") el.min = "0";
       }
-      el.id = field.id;
-      el.name = field.id;
+      if (field.type !== "multiselect") {
+        el.id = field.id;
+        el.name = field.id;
+      }
       return el;
     }
 
@@ -1996,6 +3091,12 @@
         label.textContent = field.label;
         wrap.appendChild(label);
         wrap.appendChild(createFieldInput(field));
+        if (field.help) {
+          const help = document.createElement("div");
+          help.className = "field-help";
+          help.textContent = field.help;
+          wrap.appendChild(help);
+        }
         reqForm.appendChild(wrap);
       });
 
@@ -2094,6 +3195,10 @@
       data.industry = state.industry || "NA";
       categories[state.category].fields.forEach((field) => {
         if (field.section) return;
+        if (field.type === "multiselect") {
+          data[field.id] = Array.from(document.querySelectorAll(`input[data-field-group="${field.id}"]:checked`)).map((input) => String(input.value || "").trim());
+          return;
+        }
         const el = document.getElementById(field.id);
         data[field.id] = el ? String(el.value || "").trim() : "";
       });
@@ -2168,12 +3273,20 @@
         savedAt: nowStamp()
       };
 
+      basePayload.userReview = {
+        rating: state.feedbackRating || "",
+        needsWorkNote: state.feedbackComment || "",
+        commentToExpert: state.userExpertComment || "",
+        caseStatus: state.currentCaseStatus || CASE_STATUS.AI_GENERATED
+      };
+
       return basePayload;
     }
 
     function buildContextText(payload) {
       const base = [
         payload.application || "",
+        normalizeFieldValue(payload.mainIssue),
         payload.problem || "",
         payload.additionalInfo || "",
         payload.industry || "",
@@ -2428,7 +3541,8 @@
       fields.forEach((f) => {
         if (f.section) return;
         const v = payload[f.id];
-        if (v) lines.push(`${f.label}: ${v}`);
+        const text = normalizeFieldValue(v);
+        if (text) lines.push(`${f.label}: ${text}`);
       });
       if (payload.additionalInfo) lines.push(`Other issue / additional info: ${payload.additionalInfo}`);
       lines.push(`Photo uploaded: ${payload.photoUploaded}`);
@@ -2477,15 +3591,21 @@
         feedbackReason.style.display = state.feedbackRating === "bad" ? "block" : "none";
         feedbackReason.value = state.feedbackComment;
       }
+      if (expertCommentWrap) {
+        expertCommentWrap.classList.toggle("active", !!state.feedbackRating);
+      }
+      if (expertCommentInput) {
+        expertCommentInput.value = state.userExpertComment;
+      }
       if (feedbackHelper) {
         if (!state.feedbackRating) {
-          feedbackHelper.textContent = "Choose Good or Needs work before PDF or Share. Needs work requires feedback.";
+          feedbackHelper.textContent = "Rate the AI answer first. After rating, you can add your comment to Product Expert before PDF or Share.";
         } else if (state.feedbackRating === "bad" && !state.feedbackComment.trim()) {
-          feedbackHelper.textContent = "Please tell us what was wrong or missing before PDF or Share.";
+          feedbackHelper.textContent = "Please explain what was wrong or missing. This note is required before PDF or Share when rating Needs work.";
         } else {
           feedbackHelper.textContent = state.feedbackRating === "good"
-            ? "Thanks. This case will be saved into historical good cases when you export."
-            : "Thanks. This case will be saved into historical bad cases with your feedback when you export.";
+            ? "Thanks. Add any note for Product Expert if helpful, then export or share the case."
+            : "Thanks. Add your note for Product Expert and export the case for technical verification.";
         }
       }
     }
@@ -2493,6 +3613,7 @@
     function setFeedbackRating(rating) {
       state.feedbackRating = rating;
       if (rating !== "bad") state.feedbackComment = "";
+      state.currentCaseStatus = CASE_STATUS.AI_GENERATED;
       state.historicalSaveKey = "";
       syncFeedbackUi();
       updateFlowState();
@@ -2502,7 +3623,7 @@
     }
 
     async function saveHistoricalCaseRecord(pdfName) {
-      const saveKey = `${state.feedbackRating}|${state.feedbackComment.trim()}|${pdfName}`;
+      const saveKey = `${state.feedbackRating}|${state.feedbackComment.trim()}|${state.userExpertComment.trim()}|${pdfName}`;
       if (state.historicalSaveKey === saveKey) return true;
       const enrichedCasePayload = await buildHistoricalCasePayloadForSave();
       const response = await fetch("/api/historical-case", {
@@ -2511,6 +3632,8 @@
         body: JSON.stringify({
           rating: state.feedbackRating,
           feedbackText: state.feedbackRating === "bad" ? state.feedbackComment.trim() : "",
+          userComment: state.userExpertComment.trim(),
+          caseStatus: CASE_STATUS.PENDING_EXPERT_REVIEW,
           pdfName,
           category: state.category,
           casePayload: enrichedCasePayload,
@@ -2523,11 +3646,13 @@
       if (!response.ok) {
         throw new Error(data?.error || "Unable to save historical case.");
       }
+      state.currentCaseStatus = CASE_STATUS.PENDING_EXPERT_REVIEW;
       state.historicalSaveKey = saveKey;
       addActivity(
         data?.saved === false ? "Historical Save Skipped" : "Historical Case Saved",
-        data?.message || `${state.submission?.caseNumber || state.caseNumber} saved for ${state.feedbackRating} feedback.`
+        data?.message || `${state.submission?.caseNumber || state.caseNumber} saved and moved to Pending Expert Review.`
       );
+      await refreshCaseReport();
       await refreshOpsSummary();
       return true;
     }
@@ -2602,10 +3727,23 @@
       recContent.className = "";
       recContent.innerHTML = `
         <div class="thinking-card">
-          <div class="thinking-bot">🤖</div>
+          <div class="thinking-gears" aria-hidden="true">
+            <div class="gear-wheel small">
+              <svg viewBox="0 0 38 38" fill="none">
+                <path d="M16.9 1.7a1.9 1.9 0 0 1 3.8 0l.3 2.4a12.3 12.3 0 0 1 2.9 1.2l2-1.4a1.9 1.9 0 0 1 2.7.5l1.9 3.3a1.9 1.9 0 0 1-.7 2.6l-2.1 1.2c.1.6.2 1.3.3 1.9l2.4.6a1.9 1.9 0 0 1 1.4 1.8v3.8a1.9 1.9 0 0 1-1.4 1.8l-2.4.6a12.2 12.2 0 0 1-.3 1.9l2.1 1.2a1.9 1.9 0 0 1 .7 2.6l-1.9 3.3a1.9 1.9 0 0 1-2.7.5l-2-1.4a12.3 12.3 0 0 1-2.9 1.2l-.3 2.4a1.9 1.9 0 0 1-3.8 0l-.3-2.4a12.3 12.3 0 0 1-2.9-1.2l-2 1.4a1.9 1.9 0 0 1-2.7-.5l-1.9-3.3a1.9 1.9 0 0 1 .7-2.6l2.1-1.2a12.2 12.2 0 0 1-.3-1.9l-2.4-.6A1.9 1.9 0 0 1 3 19.6v-3.8A1.9 1.9 0 0 1 4.4 14l2.4-.6c0-.6.1-1.3.3-1.9l-2.1-1.2a1.9 1.9 0 0 1-.7-2.6l1.9-3.3a1.9 1.9 0 0 1 2.7-.5l2 1.4A12.3 12.3 0 0 1 14 4.1l.3-2.4Z" fill="currentColor"/>
+                <circle cx="18.8" cy="17.7" r="7.1" fill="#ffffff"/>
+              </svg>
+            </div>
+            <div class="gear-wheel big">
+              <svg viewBox="0 0 42 42" fill="none">
+                <path d="M18.5 1.8a2.1 2.1 0 0 1 4.2 0l.32 2.68a13.6 13.6 0 0 1 3.28 1.36l2.28-1.56a2.1 2.1 0 0 1 2.98.56l2.1 3.64a2.1 2.1 0 0 1-.75 2.9l-2.34 1.35c.16.68.24 1.4.29 2.14l2.66.66a2.1 2.1 0 0 1 1.58 2.03v4.22a2.1 2.1 0 0 1-1.58 2.03l-2.66.66c-.05.74-.13 1.46-.29 2.14l2.34 1.35a2.1 2.1 0 0 1 .75 2.9l-2.1 3.64a2.1 2.1 0 0 1-2.98.56l-2.28-1.56a13.6 13.6 0 0 1-3.28 1.36l-.32 2.68a2.1 2.1 0 0 1-4.2 0l-.32-2.68a13.6 13.6 0 0 1-3.28-1.36l-2.28 1.56a2.1 2.1 0 0 1-2.98-.56l-2.1-3.64a2.1 2.1 0 0 1 .75-2.9l2.34-1.35a13.3 13.3 0 0 1-.29-2.14l-2.66-.66A2.1 2.1 0 0 1 2.4 22.8v-4.22a2.1 2.1 0 0 1 1.58-2.03l2.66-.66c.05-.74.13-1.46.29-2.14l-2.34-1.35a2.1 2.1 0 0 1-.75-2.9l2.1-3.64a2.1 2.1 0 0 1 2.98-.56l2.28 1.56a13.6 13.6 0 0 1 3.28-1.36l.32-2.68Z" fill="currentColor"/>
+                <circle cx="20.6" cy="20.7" r="10.2" fill="#ffffff"/>
+              </svg>
+            </div>
+          </div>
           <div>
-            <p class="thinking-title">Robot is thinking...</p>
-            <p class="thinking-text">Analyzing the latest case details and preparing the recommendation. Please wait a moment.</p>
+            <p class="thinking-title">Analyzing case details...</p>
+            <p class="thinking-text">Checking the latest case information and preparing a fresh recommendation. Please wait a moment.</p>
           </div>
         </div>
       `;
@@ -2630,6 +3768,8 @@
           state.lastAnalysisMeta = aiResult.analysisMeta || null;
           state.feedbackRating = "";
           state.feedbackComment = "";
+          state.userExpertComment = "";
+          state.currentCaseStatus = CASE_STATUS.AI_GENERATED;
           state.historicalSaveKey = "";
 
         const referenceIntro = "";
@@ -2666,9 +3806,9 @@
         } catch (err) {
           const normalized = String(err?.message || "Unknown error");
           const safeMsg = normalized.includes("Background API key is not configured")
-            ? "Backend API key is missing. Please set OPENAI_API_KEY in backend .env and restart server."
-            : normalized;
-          addActivity("Recommendation Update Failed", err.message || "Unknown error.");
+            ? "The AI service is not configured yet. Please contact AISS admin."
+            : formatFriendlyError(normalized, "The system could not refresh the recommendation right now.");
+          addActivity("Recommendation Update Failed", safeMsg);
           addChatBubble(`Unable to refresh recommendation right now: ${safeMsg}`, "ai");
           await refreshOpsSummary();
         } finally {
@@ -2776,13 +3916,17 @@
     function recLinesForPdf() {
       if (!state.recommendation) return [];
       const r = state.recommendation;
+      const caseNumber = state.submission?.caseNumber || state.caseNumber || "N/A";
+      const recallLink = caseNumber !== "N/A" ? buildCaseLink(caseNumber) : "N/A";
       return [
         "AI SALES SUPPORT ANALYSIS AND RECOMMENDATION",
         "",
-        `Case number: ${state.submission?.caseNumber || state.caseNumber || "N/A"}`,
+        `Case number: ${caseNumber}`,
         `User: ${state.submission?.user || state.userName || "N/A"}`,
         `Industry: ${state.submission?.industry || state.industry || "NA"}`,
         `Product category: ${state.category || "N/A"}`,
+        `Case status: ${state.currentCaseStatus || CASE_STATUS.AI_GENERATED}`,
+        `Case link: ${recallLink}`,
         "",
         r.runInfo || "",
         r.runNote || "",
@@ -2809,10 +3953,15 @@
         "E. Reason",
         r.reason,
         "",
-        "F. Assumptions / Uncertainty",
+        "F. User Review",
+        `User rating: ${state.feedbackRating || "Unrated"}`,
+        `Needs-work note: ${state.feedbackComment || "None"}`,
+        `Comment to Product Expert: ${state.userExpertComment || "None"}`,
+        "",
+        "G. Assumptions / Uncertainty",
         ...r.assumptions.map((x) => `- ${x}`),
         "",
-        "G. What to Check / Ask Next",
+        "H. What to Check / Ask Next",
         ...(r.decisionGuidance || []).map((x) => `- ${x}`),
         "",
         "All outputs require expert verification before customer sharing."
@@ -2999,11 +4148,13 @@
       const caseNumber = state.submission?.caseNumber || state.caseNumber || "N/A";
       const user = state.submission?.user || state.userName || "N/A";
       const category = state.category || "N/A";
+      const recallLink = caseNumber !== "N/A" ? buildCaseLink(caseNumber) : "";
       return [
         "AI Sales Support analysis and recommendation",
         `Case number: ${caseNumber}`,
         `User: ${user}`,
         `Product category: ${category}`,
+        recallLink ? `Case link: ${recallLink}` : "",
         item?.filename ? `PDF: ${item.filename}` : "",
         "",
         ...lines
@@ -3165,7 +4316,7 @@
         time: nowStamp()
       });
       clearPendingChatFiles();
-      addActivity("Chat Update Received", text || "Attachment-only update.");
+      addActivity("Re-analysis Update Received", text || "Attachment-only update.");
 
       if (!state.submission) {
         addChatBubble("Submit the category form first. After that, every chat update will trigger full re-analysis.", "ai");
@@ -3181,12 +4332,12 @@
     reqForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!state.category) {
-        alert("Please select a category first.");
+        showUserMessage("Please select a category first.");
         return;
       }
       const payload = collectSubmission();
       if (!payload.user) {
-        alert("Please enter user name.");
+        showUserMessage("Please enter user name.");
         userNameInput?.focus();
         return;
       }
@@ -3202,12 +4353,14 @@
       state.category = categorySelect.value;
       state.submission = null;
       state.followupAnswers = {};
-      state.followupQuestions = [];
-      state.recommendation = null;
-      state.referencedCaseNumbers = [];
-      state.feedbackRating = "";
-      state.feedbackComment = "";
-      state.historicalSaveKey = "";
+        state.followupQuestions = [];
+        state.recommendation = null;
+        state.referencedCaseNumbers = [];
+        state.feedbackRating = "";
+        state.feedbackComment = "";
+        state.userExpertComment = "";
+        state.currentCaseStatus = CASE_STATUS.DRAFT;
+        state.historicalSaveKey = "";
       state.chatNotes = [];
       state.reanalysisRound = 0;
       state.lastContextHash = "";
@@ -3221,7 +4374,7 @@
       recContent.className = "empty";
       recContent.innerHTML = `
         <h3>Ready to analyze</h3>
-        <p>📦 Category → 📝 Form + 📸 Upload → ✅ Submit → 🤖 Review → 📄 PDF/Share</p>
+        <p>Select a category, complete the requirement form, upload supporting photos if needed, then submit for analysis.</p>
       `;
       syncFeedbackUi();
       if (state.category) addActivity("Category Selected", state.category);
@@ -3239,16 +4392,21 @@
         await ensureCaseNumberAssigned().catch(() => {});
       }
     });
+    expertCommentInput?.addEventListener("input", () => {
+      state.userExpertComment = String(expertCommentInput.value || "");
+      state.historicalSaveKey = "";
+      syncFeedbackUi();
+    });
 
     pdfBtn.addEventListener("click", async () => {
       const ready = await ensureReadyForExport();
       if (!ready.ok) {
-        alert(ready.reason);
+        showUserMessage(ready.reason, "PDF could not be generated right now.");
         return;
       }
       const item = await buildPdfItem();
       if (!item) {
-        alert("Please submit details first to generate PDF.");
+        showUserMessage("Please submit details first to generate PDF.");
         return;
       }
       pushHistory(item);
@@ -3259,12 +4417,12 @@
     shareBtn.addEventListener("click", async () => {
       const ready = await ensureReadyForExport();
       if (!ready.ok) {
-        alert(ready.reason);
+        showUserMessage(ready.reason, "Share could not be completed right now.");
         return;
       }
       const item = await buildPdfItem();
       if (!item) {
-        alert("Please submit details first to share PDF.");
+        showUserMessage("Please submit details first to share PDF.");
         return;
       }
       pushHistory(item);
@@ -3293,9 +4451,25 @@
       try {
         await saveCurrentAsEvalCase();
       } catch (err) {
-        addActivity("Eval Save Failed", err.message || "Unable to save evaluation case.");
-        alert(err.message || "Unable to save evaluation case.");
+        const friendly = formatFriendlyError(err.message, "AI evaluation could not be saved right now.");
+        addActivity("AI Evaluation Save Failed", friendly);
+        showUserMessage(friendly);
       }
+    });
+
+    opsToggleBtn?.addEventListener("click", () => toggleOpsCard());
+    caseReportToggleBtn?.addEventListener("click", () => toggleCaseReportCard());
+    refreshCaseReportBtn?.addEventListener("click", refreshCaseReport);
+    caseStatusFilter?.addEventListener("change", refreshCaseReport);
+    caseSearchInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        refreshCaseReport();
+      }
+    });
+    closeCaseDetailBtn?.addEventListener("click", closeCaseDetail);
+    caseDetailModal?.addEventListener("click", (event) => {
+      if (event.target === caseDetailModal) closeCaseDetail();
     });
 
     chatAttachBtn.addEventListener("click", () => chatFileInput.click());
@@ -3336,6 +4510,7 @@
     });
 
     document.addEventListener("paste", (event) => {
+      if (event.defaultPrevented) return;
       const items = Array.from(event.clipboardData?.items || []);
       const files = items
         .filter((i) => i.kind === "file")
@@ -3357,12 +4532,20 @@
       updateWebsiteChangedLabel();
       bindMetaFields();
       initCategoryOptions();
+      toggleOpsCard(false);
+      toggleCaseReportCard(false);
       updateFlowState();
       renderHistory();
       syncFeedbackUi();
       refreshOpsSummary();
+      refreshCaseReport();
+      const requestedCase = new URLSearchParams(window.location.search).get("case");
+      if (requestedCase) {
+        toggleCaseReportCard(true);
+        openCaseDetail(requestedCase).catch(() => {});
+      }
       addActivity("Session Ready", "AI Sales Support loaded.");
-      addChatBubble("Select category, fill form, submit, then I will re-analyze every new update.", "ai");
+      addChatBubble("Select a category, complete the requirement form, submit for analysis, then add new findings here any time you want a re-analysis.", "ai");
     }
 
     init();

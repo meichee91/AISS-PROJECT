@@ -37,6 +37,15 @@ const localAppEventLogs = [];
 const localEvalCases = [];
 const MAX_LOCAL_LOGS = 150;
 let azureSqlPoolPromise = null;
+const CASE_STATUS = {
+  DRAFT: "Draft",
+  AI_GENERATED: "AI Generated",
+  PENDING_EXPERT_REVIEW: "Pending Expert Review",
+  VERIFIED_GOOD: "Verified - Good",
+  VERIFIED_CORRECTED: "Verified - Corrected",
+  VERIFIED_REJECTED: "Verified - Rejected",
+  ARCHIVED: "Archived"
+};
 
 app.use(express.json({ limit: "10mb" }));
 
@@ -111,6 +120,64 @@ function summarizeUsage(usage) {
 
 function cleanText(value, max = 500) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function cleanLargeText(value, max = 6000) {
+  return String(value || "").replace(/\r\n/g, "\n").trim().slice(0, max);
+}
+
+function caseRecordColumns() {
+  return `
+    case_number, pdf_name, category, category_slug, folder_path, rating, feedback_text,
+    user_comment, case_status, expert_decision, expert_rating, expert_comment,
+    corrected_recommendation, knowledge_value, reviewer_name, learning_eligible,
+    reference_type, refer_historical_cases, referenced_case_numbers, case_payload,
+    ai_response, reviewed_at, created_at, updated_at
+  `;
+}
+
+function mapHistoricalCaseRow(item, sourceTable = "") {
+  const casePayload = parseJsonText(item.case_payload, {});
+  const aiResponse = parseJsonText(item.ai_response, {});
+  const referencedCaseNumbers = parseJsonText(item.referenced_case_numbers, []);
+  return {
+    caseNumber: item.case_number,
+    pdfName: item.pdf_name,
+    category: item.category,
+    categorySlug: item.category_slug,
+    folderPath: item.folder_path,
+    rating: item.rating,
+    feedbackText: item.feedback_text,
+    userComment: item.user_comment || "",
+    caseStatus: item.case_status || CASE_STATUS.AI_GENERATED,
+    expertDecision: item.expert_decision || "",
+    expertRating: item.expert_rating || "",
+    expertComment: item.expert_comment || "",
+    correctedRecommendation: item.corrected_recommendation || "",
+    knowledgeValue: item.knowledge_value || "",
+    reviewerName: item.reviewer_name || "",
+    learningEligible: !!item.learning_eligible,
+    referenceType: item.reference_type || "",
+    referHistoricalCases: !!item.refer_historical_cases,
+    referencedCaseNumbers,
+    casePayload,
+    aiResponse,
+    reviewedAt: item.reviewed_at || "",
+    createdAt: item.created_at || "",
+    updatedAt: item.updated_at || item.created_at || "",
+    sourceTable
+  };
+}
+
+function deriveReferenceMeta(expertDecision) {
+  const decision = String(expertDecision || "").trim();
+  if (decision === CASE_STATUS.VERIFIED_GOOD) {
+    return { learningEligible: true, referenceType: "positive" };
+  }
+  if (decision === CASE_STATUS.VERIFIED_CORRECTED) {
+    return { learningEligible: true, referenceType: "corrective" };
+  }
+  return { learningEligible: false, referenceType: "" };
 }
 
 async function getAzureSqlPool() {
@@ -206,12 +273,33 @@ async function azureInsertHistoricalCase(payload) {
   const category = payload.category || "Other";
   const categorySlug = slugify(category);
   const table = rating === "good" ? "dbo.historical_case_good" : "dbo.historical_case_bad";
+  const otherTable = rating === "good" ? "dbo.historical_case_bad" : "dbo.historical_case_good";
   const folderRoot = rating === "good" ? "historical-case-good" : "historical-case-bad";
+  await azureQuery(`DELETE FROM ${otherTable} WHERE case_number = @caseNumber;`, (request) => {
+    request.input("caseNumber", sql.NVarChar(120), payload.casePayload?.caseNumber || "");
+  });
   await azureQuery(`
-    INSERT INTO ${table}
-      (case_number, pdf_name, category, category_slug, folder_path, rating, feedback_text, refer_historical_cases, referenced_case_numbers, case_payload, ai_response, created_at)
-    VALUES
-      (@caseNumber, @pdfName, @category, @categorySlug, @folderPath, @rating, @feedbackText, @referHistoricalCases, @referencedCaseNumbers, @casePayload, @aiResponse, SYSUTCDATETIME());
+    MERGE ${table} AS target
+    USING (SELECT @caseNumber AS case_number) AS source
+    ON target.case_number = source.case_number
+    WHEN MATCHED THEN UPDATE SET
+      pdf_name = @pdfName,
+      category = @category,
+      category_slug = @categorySlug,
+      folder_path = @folderPath,
+      rating = @rating,
+      feedback_text = @feedbackText,
+      user_comment = @userComment,
+      case_status = @caseStatus,
+      refer_historical_cases = @referHistoricalCases,
+      referenced_case_numbers = @referencedCaseNumbers,
+      case_payload = @casePayload,
+      ai_response = @aiResponse,
+      updated_at = SYSUTCDATETIME()
+    WHEN NOT MATCHED THEN INSERT
+      (case_number, pdf_name, category, category_slug, folder_path, rating, feedback_text, user_comment, case_status, expert_decision, expert_rating, expert_comment, corrected_recommendation, knowledge_value, reviewer_name, learning_eligible, reference_type, refer_historical_cases, referenced_case_numbers, case_payload, ai_response, reviewed_at, created_at, updated_at)
+      VALUES
+      (@caseNumber, @pdfName, @category, @categorySlug, @folderPath, @rating, @feedbackText, @userComment, @caseStatus, '', '', '', '', '', '', 0, '', @referHistoricalCases, @referencedCaseNumbers, @casePayload, @aiResponse, NULL, SYSUTCDATETIME(), SYSUTCDATETIME());
   `, (request) => {
     request.input("caseNumber", sql.NVarChar(120), payload.casePayload?.caseNumber || "");
     request.input("pdfName", sql.NVarChar(255), payload.pdfName || "");
@@ -220,6 +308,8 @@ async function azureInsertHistoricalCase(payload) {
     request.input("folderPath", sql.NVarChar(400), `${folderRoot}/${categorySlug}/${payload.pdfName}`);
     request.input("rating", sql.NVarChar(20), rating);
     request.input("feedbackText", sql.NVarChar(sql.MAX), payload.feedbackText || "");
+    request.input("userComment", sql.NVarChar(sql.MAX), payload.userComment || "");
+    request.input("caseStatus", sql.NVarChar(60), payload.caseStatus || CASE_STATUS.PENDING_EXPERT_REVIEW);
     request.input("referHistoricalCases", sql.Bit, payload.referHistoricalCases ? 1 : 0);
     request.input("referencedCaseNumbers", sql.NVarChar(sql.MAX), jsonText(payload.referencedCaseNumbers || [], "[]"));
     request.input("casePayload", sql.NVarChar(sql.MAX), jsonText(payload.casePayload || {}, "{}"));
@@ -429,6 +519,105 @@ async function azureTopRows(tableName, columns, limit = 20, orderBy = "created_a
   return azureQuery(`SELECT TOP (${Math.max(1, limit)}) ${columns} FROM ${tableName} ORDER BY ${orderBy};`);
 }
 
+async function azureFindHistoricalCase(caseNumber) {
+  const lookup = async (tableName) => {
+    const rows = await azureQuery(`
+      SELECT TOP (1) ${caseRecordColumns()}
+      FROM ${tableName}
+      WHERE case_number = @caseNumber;
+    `, (request) => {
+      request.input("caseNumber", sql.NVarChar(120), caseNumber);
+    });
+    return rows?.[0] ? mapHistoricalCaseRow(rows[0], tableName) : null;
+  };
+
+  const good = await lookup("dbo.historical_case_good");
+  if (good) return good;
+  return lookup("dbo.historical_case_bad");
+}
+
+async function azureListHistoricalCases(filters = {}) {
+  const limit = Math.max(1, Math.min(Number(filters.limit || 60), 250));
+  const statusFilter = String(filters.status || "").trim();
+  const categoryFilter = String(filters.category || "").trim();
+  const searchFilter = cleanText(filters.search || "", 120);
+  const baseQuery = `
+    SELECT TOP (${limit})
+      case_number, category, category_slug, rating, case_status, user_comment, expert_decision, expert_rating,
+      reviewer_name, learning_eligible, reference_type, created_at, updated_at, reviewed_at, pdf_name
+    FROM __TABLE__
+    WHERE 1 = 1
+      ${statusFilter ? "AND case_status = @statusFilter" : ""}
+      ${categoryFilter ? "AND category = @categoryFilter" : ""}
+      ${searchFilter ? "AND (case_number LIKE @searchFilter OR category LIKE @searchFilter OR user_comment LIKE @searchFilter OR expert_comment LIKE @searchFilter)" : ""}
+  `;
+  const bind = (request) => {
+    if (statusFilter) request.input("statusFilter", sql.NVarChar(60), statusFilter);
+    if (categoryFilter) request.input("categoryFilter", sql.NVarChar(120), categoryFilter);
+    if (searchFilter) request.input("searchFilter", sql.NVarChar(160), `%${searchFilter}%`);
+  };
+  const [goodRows, badRows] = await Promise.all([
+    azureQuery(`${baseQuery.replace("__TABLE__", "dbo.historical_case_good")} ORDER BY updated_at DESC;`, bind),
+    azureQuery(`${baseQuery.replace("__TABLE__", "dbo.historical_case_bad")} ORDER BY updated_at DESC;`, bind)
+  ]);
+  return [...goodRows, ...badRows]
+    .map((item) => ({
+      caseNumber: item.case_number,
+      category: item.category,
+      categorySlug: item.category_slug,
+      rating: item.rating,
+      caseStatus: item.case_status || CASE_STATUS.AI_GENERATED,
+      userComment: item.user_comment || "",
+      expertDecision: item.expert_decision || "",
+      expertRating: item.expert_rating || "",
+      reviewerName: item.reviewer_name || "",
+      learningEligible: !!item.learning_eligible,
+      referenceType: item.reference_type || "",
+      createdAt: item.created_at || "",
+      updatedAt: item.updated_at || item.created_at || "",
+      reviewedAt: item.reviewed_at || "",
+      pdfName: item.pdf_name || ""
+    }))
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+}
+
+async function azureUpdateExpertReview(caseNumber, payload) {
+  const currentCase = await azureFindHistoricalCase(caseNumber);
+  if (!currentCase) {
+    throw new Error("Case not found.");
+  }
+  const { learningEligible, referenceType } = deriveReferenceMeta(payload.caseStatus);
+  await azureQuery(`
+    UPDATE ${currentCase.sourceTable}
+    SET
+      case_status = @caseStatus,
+      expert_decision = @expertDecision,
+      expert_rating = @expertRating,
+      expert_comment = @expertComment,
+      corrected_recommendation = @correctedRecommendation,
+      knowledge_value = @knowledgeValue,
+      reviewer_name = @reviewerName,
+      learning_eligible = @learningEligible,
+      reference_type = @referenceType,
+      reviewed_at = @reviewedAt,
+      updated_at = SYSUTCDATETIME()
+    WHERE case_number = @caseNumber;
+  `, (request) => {
+    request.input("caseNumber", sql.NVarChar(120), caseNumber);
+    request.input("caseStatus", sql.NVarChar(60), payload.caseStatus);
+    request.input("expertDecision", sql.NVarChar(60), payload.caseStatus);
+    request.input("expertRating", sql.NVarChar(40), payload.expertRating || "");
+    request.input("expertComment", sql.NVarChar(sql.MAX), payload.expertComment || "");
+    request.input("correctedRecommendation", sql.NVarChar(sql.MAX), payload.correctedRecommendation || "");
+    request.input("knowledgeValue", sql.NVarChar(20), payload.knowledgeValue || "");
+    request.input("reviewerName", sql.NVarChar(255), payload.reviewerName || "");
+    request.input("learningEligible", sql.Bit, learningEligible ? 1 : 0);
+    request.input("referenceType", sql.NVarChar(20), referenceType);
+    request.input("reviewedAt", sql.DateTime2, new Date());
+  });
+  return azureFindHistoricalCase(caseNumber);
+}
+
 const db = {
   mode: () => getStorageMode(),
   hasStructuredStorage: () => getStorageMode() !== "local",
@@ -452,6 +641,18 @@ const db = {
   fetchCatalogProductsByCategory: async (categorySlug, limit) => {
     if (hasAzureSql()) return azureFetchCatalogProductsByCategory(categorySlug, limit);
     return Promise.reject(new Error("Azure SQL catalog fetch adapter unavailable."));
+  },
+  findHistoricalCase: async (caseNumber) => {
+    if (hasAzureSql()) return azureFindHistoricalCase(caseNumber);
+    return null;
+  },
+  listHistoricalCases: async (filters) => {
+    if (hasAzureSql()) return azureListHistoricalCases(filters);
+    return [];
+  },
+  updateExpertReview: async (caseNumber, payload) => {
+    if (hasAzureSql()) return azureUpdateExpertReview(caseNumber, payload);
+    return null;
   }
 };
 
@@ -742,7 +943,7 @@ async function getEvalCases(limit = 12) {
 async function getAdminSummary() {
   if (hasAzureSql()) {
     try {
-      const [goodCount, badCount, productCount, runCount, eventCount, evalCount, recentRuns, recentEvents, recentEvalCases] = await Promise.all([
+      const [goodCount, badCount, productCount, runCount, eventCount, evalCount, recentRuns, recentEvents, recentEvalCases, caseItems] = await Promise.all([
         azureCount("dbo.historical_case_good"),
         azureCount("dbo.historical_case_bad"),
         azureCount("dbo.product_catalog"),
@@ -751,12 +952,18 @@ async function getAdminSummary() {
         azureCount("dbo.eval_cases"),
         getAdminRuns(6),
         getAdminEvents(6),
-        getEvalCases(6)
+        getEvalCases(6),
+        azureListHistoricalCases({ limit: 200 })
       ]);
       const successRuns = recentRuns.filter((item) => item.status === "success");
       const avgLatencyMs = successRuns.length
         ? Math.round(successRuns.reduce((sum, item) => sum + Number(item.latency_ms || 0), 0) / successRuns.length)
         : 0;
+      const statusCounts = caseItems.reduce((acc, item) => {
+        const key = item.caseStatus || CASE_STATUS.AI_GENERATED;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
       return {
         promptVersion,
         storageMode: "azure-sql",
@@ -770,6 +977,7 @@ async function getAdminSummary() {
           badCases: badCount,
           productCatalogItems: productCount
         },
+        statusCounts,
         avgLatencyMs,
         lastSyncState: catalogSyncState,
         recentRuns,
@@ -879,6 +1087,74 @@ app.post("/api/evals", async (req, res) => {
     return res.json(await saveEvalCase(body));
   } catch (err) {
     return res.status(500).json({ error: err.message || "Unable to save evaluation case." });
+  }
+});
+
+app.get("/api/cases", async (req, res) => {
+  try {
+    if (!hasAzureSql()) {
+      return res.json({ items: [] });
+    }
+    const items = await db.listHistoricalCases({
+      limit: req.query.limit,
+      status: req.query.status,
+      category: req.query.category,
+      search: req.query.search
+    });
+    return res.json({ items });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Unable to load case report." });
+  }
+});
+
+app.get("/api/cases/:caseNumber", async (req, res) => {
+  try {
+    if (!hasAzureSql()) {
+      return res.status(404).json({ error: "Structured storage is not configured." });
+    }
+    const item = await db.findHistoricalCase(String(req.params.caseNumber || "").trim());
+    if (!item) {
+      return res.status(404).json({ error: "Case not found." });
+    }
+    return res.json({ item });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Unable to load case details." });
+  }
+});
+
+app.post("/api/cases/:caseNumber/expert-review", async (req, res) => {
+  try {
+    if (!hasAzureSql()) {
+      return res.status(400).json({ error: "Structured storage is not configured." });
+    }
+    const body = req.body || {};
+    const caseStatus = String(body.caseStatus || "").trim();
+    const allowedStatuses = [
+      CASE_STATUS.VERIFIED_GOOD,
+      CASE_STATUS.VERIFIED_CORRECTED,
+      CASE_STATUS.VERIFIED_REJECTED,
+      CASE_STATUS.ARCHIVED
+    ];
+    if (!allowedStatuses.includes(caseStatus)) {
+      return res.status(400).json({ error: "A verified case status is required." });
+    }
+    if (!String(body.expertComment || "").trim()) {
+      return res.status(400).json({ error: "Expert comment is required." });
+    }
+    if (caseStatus === CASE_STATUS.VERIFIED_CORRECTED && !String(body.correctedRecommendation || "").trim()) {
+      return res.status(400).json({ error: "Corrected recommendation is required for Verified - Corrected." });
+    }
+    const item = await db.updateExpertReview(String(req.params.caseNumber || "").trim(), {
+      caseStatus,
+      expertRating: String(body.expertRating || "").trim(),
+      expertComment: cleanLargeText(body.expertComment || "", 6000),
+      correctedRecommendation: cleanLargeText(body.correctedRecommendation || "", 6000),
+      knowledgeValue: cleanText(body.knowledgeValue || "", 20),
+      reviewerName: cleanText(body.reviewerName || "", 255)
+    });
+    return res.json({ saved: true, item });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Unable to save expert review." });
   }
 });
 
