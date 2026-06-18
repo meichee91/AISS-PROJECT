@@ -1,0 +1,10 @@
+{
+  "name": "aiss-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Azure App Service launcher for AISS PROJECT",
+  "scripts": {
+    "postinstall": "npm --prefix backend install",
+    "start": "npm --prefix backend start"
+  }
+}
