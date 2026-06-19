@@ -133,5 +133,5 @@ Current Azure App Service URL:
 - Historical-case reference is currently deactivated in the live UI/backend flow.
 - Product catalog sync is manual-only right now.
 - Azure OpenAI support is already coded, but the app will keep using `OPENAI_API_KEY` until the Azure deployment values are filled.
-- Render and Supabase are retired from the active AISS stack.
+- AISS uses GitHub, Azure App Service `aiss-sls`, Azure SQL, and OpenAI API.
 - Do not commit `backend/.env` or `node_modules`.
