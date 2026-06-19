@@ -18,7 +18,7 @@ Read this file first on the company PC before making changes.
 - Database: **Azure SQL** (active)
 - AI provider: **OpenAI API** using `OPENAI_API_KEY` (active)
 - Azure OpenAI: prepared in `.env`, **not active yet** because Azure quota/model deployment was blocked
-- Hosting: **Azure App Service** (active live host)
+- Hosting: **Azure App Service `aiss-sls`** (active live host)
 
 ## Important storage rules
 
@@ -32,16 +32,13 @@ Read this file first on the company PC before making changes.
 - Uploaded image data is stored **inside the historical case payload JSON**
 - No separate image file storage is currently required
 
-## Supabase status
-
-- Supabase path has been removed from the codebase
-- Azure SQL is now the only active structured storage path
+Azure SQL is the only active structured storage path.
 
 ## Azure deployment model
 
 - GitHub `main` is connected to Azure App Service through GitHub Actions
 - Workflow file: `.github/workflows/main_aiss.yml`
-- Azure App Service auto-updates on successful workflow runs
+- Azure App Service `aiss-sls` auto-updates on successful workflow runs
 
 ## Current expert verification design
 
@@ -61,27 +58,6 @@ Learning logic:
 - `Verified - Corrected` => corrective reference
 - `Verified - Rejected` => stored for traceability, not a direct positive learning case
 - Unverified cases should not be used for AI learning
-
-## Current local-only changes not yet pushed at the time of writing this handoff
-
-Personal PC `git status` showed local modifications in:
-
-- `azure-sql-schema.sql`
-- `backend/server.js`
-- `frontend/index.html`
-
-These include:
-
-1. expert verification / case report workflow backbone
-2. `Main issue` field under `Machine / Application`
-3. UI refinements:
-   - `Re-analysis` title cleanup
-   - gear icon / loading gears redesign
-   - `AI Evaluation`
-   - `AI Activity Log`
-   - improved error messages
-
-If you want the company PC to exactly match the personal PC latest state, make sure these changes are committed and pushed before cloning there.
 
 ## Local run commands
 
@@ -141,12 +117,7 @@ CATALOG_SYNC_ON_STARTUP=false
 
 Current live URL:
 
-- `https://aiss-cfdtf0dncgcxcphk.centralus-01.azurewebsites.net`
-
-Recommended next improvement:
-
-- add a custom domain such as `aiss.yourcompany.com` or `aiss.slsbearings.com`
-- keep the Azure-generated URL as the technical fallback
+- `https://aiss-sls.azurewebsites.net`
 
 ## Notes for future Codex on company PC
 
@@ -159,7 +130,7 @@ If continuing this project:
    - `backend/server.js`
    - `azure-sql-schema.sql`
 4. verify local server runs on `http://localhost:3000`
-5. check whether the latest local-only changes had already been pushed from the personal PC
+5. confirm GitHub Actions is still deploying to `aiss-sls`
 
 ## Recommended migration workflow
 

@@ -88,7 +88,7 @@ The repo deploys to Azure App Service through GitHub Actions:
 
 - Workflow file: [C:\Users\xm100\Documents\Codex\AISS PROJECT\.github\workflows\main_aiss.yml](</C:\Users\xm100\Documents\Codex\AISS PROJECT\.github\workflows\main_aiss.yml>)
 - Trigger: every push to `main`
-- Target app: Azure App Service `aiss`
+- Target app: Azure App Service `aiss-sls`
 
 As long as GitHub Actions is green, the live Azure site updates automatically after each push.
 
@@ -126,20 +126,12 @@ Leave those blank until Azure quota is available and the model deployment exists
 
 Current Azure App Service URL:
 
-- [https://aiss-cfdtf0dncgcxcphk.centralus-01.azurewebsites.net](https://aiss-cfdtf0dncgcxcphk.centralus-01.azurewebsites.net)
-
-If you want a cleaner URL, the best option is to add a **custom domain** now that the app is on a Basic tier or higher. For example:
-
-- `aiss.yourcompany.com`
-- `sales-ai.yourcompany.com`
-- `aiss.slsbearings.com`
-
-The Azure-generated `azurewebsites.net` hostname is not a great user-facing URL and is usually left as the technical fallback address.
+- [https://aiss-sls.azurewebsites.net](https://aiss-sls.azurewebsites.net)
 
 ## Notes
 
 - Historical-case reference is currently deactivated in the live UI/backend flow.
 - Product catalog sync is manual-only right now.
 - Azure OpenAI support is already coded, but the app will keep using `OPENAI_API_KEY` until the Azure deployment values are filled.
-- Render is no longer the main deployment path for AISS.
+- Render and Supabase are retired from the active AISS stack.
 - Do not commit `backend/.env` or `node_modules`.
