@@ -18,7 +18,7 @@ Read this file first on the company PC before making changes.
 - Database: **Azure SQL** (active)
 - AI provider: **OpenAI API** using `OPENAI_API_KEY` (active)
 - Azure OpenAI: prepared in `.env`, **not active yet** because Azure quota/model deployment was blocked
-- Hosting: Render
+- Hosting: **Azure App Service** (active live host)
 
 ## Important storage rules
 
@@ -37,10 +37,11 @@ Read this file first on the company PC before making changes.
 - Supabase path has been removed from the codebase
 - Azure SQL is now the only active structured storage path
 
-## Render deployment model
+## Azure deployment model
 
-- GitHub `main` is connected to Render
-- Render auto-deploys on commit
+- GitHub `main` is connected to Azure App Service through GitHub Actions
+- Workflow file: `.github/workflows/main_aiss.yml`
+- Azure App Service auto-updates on successful workflow runs
 
 ## Current expert verification design
 
@@ -123,7 +124,7 @@ CATALOG_SYNC_ENABLED=false
 CATALOG_SYNC_ON_STARTUP=false
 ```
 
-## Render env vars should match
+## Azure App Service env vars should match
 
 - `OPENAI_API_KEY`
 - `AZURE_SQL_SERVER`
@@ -135,6 +136,17 @@ CATALOG_SYNC_ON_STARTUP=false
 - `CATALOG_SYNC_ENABLED=false`
 - `CATALOG_SYNC_ON_STARTUP=false`
 - `CATALOG_SYNC_INTERVAL_MINUTES=4320`
+
+## Live URL
+
+Current live URL:
+
+- `https://aiss-cfdtf0dncgcxcphk.centralus-01.azurewebsites.net`
+
+Recommended next improvement:
+
+- add a custom domain such as `aiss.yourcompany.com` or `aiss.slsbearings.com`
+- keep the Azure-generated URL as the technical fallback
 
 ## Notes for future Codex on company PC
 
