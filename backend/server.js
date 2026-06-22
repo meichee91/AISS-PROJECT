@@ -130,6 +130,15 @@ function cleanLargeText(value, max = 6000) {
   return String(value || "").replace(/\r\n/g, "\n").trim().slice(0, max);
 }
 
+function logApiError(route, err, extra = {}) {
+  const detail = {
+    route,
+    message: err?.message || String(err),
+    ...extra
+  };
+  console.error(`[api-error] ${JSON.stringify(detail)}`);
+}
+
 function caseRecordColumns() {
   return `
     case_number, pdf_name, category, category_slug, folder_path, rating, feedback_text,
@@ -1105,6 +1114,7 @@ app.get("/api/case-number/next", async (req, res) => {
     }
     return res.json(await reserveNextCaseNumber(category));
   } catch (err) {
+    logApiError("/api/case-number/next", err, { category: String(req.query.category || "").trim() });
     return res.status(500).json({ error: err.message || "Unable to assign case number." });
   }
 });
@@ -1120,6 +1130,10 @@ app.post("/api/historical-case", async (req, res) => {
     }
     return res.json(await saveHistoricalCase(body));
   } catch (err) {
+    logApiError("/api/historical-case", err, {
+      caseNumber: req.body?.casePayload?.caseNumber || "",
+      pdfName: req.body?.pdfName || ""
+    });
     return res.status(500).json({ error: err.message || "Unable to save historical case." });
   }
 });
