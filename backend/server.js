@@ -27,6 +27,10 @@ const azureSqlUser = String(process.env.AZURE_SQL_USER || "").trim();
 const azureSqlPassword = String(process.env.AZURE_SQL_PASSWORD || "");
 const azureSqlEncrypt = String(process.env.AZURE_SQL_ENCRYPT || "true").toLowerCase() !== "false";
 const azureSqlTrustServerCertificate = String(process.env.AZURE_SQL_TRUST_SERVER_CERTIFICATE || "false").toLowerCase() === "true";
+const azureSqlConnectTimeoutMs = Math.max(15000, Number(process.env.AZURE_SQL_CONNECT_TIMEOUT_MS || 60000));
+const azureSqlRequestTimeoutMs = Math.max(15000, Number(process.env.AZURE_SQL_REQUEST_TIMEOUT_MS || 60000));
+const azureSqlWakeRetryCount = Math.max(1, Number(process.env.AZURE_SQL_WAKE_RETRY_COUNT || 3));
+const azureSqlWakeRetryDelayMs = Math.max(1000, Number(process.env.AZURE_SQL_WAKE_RETRY_DELAY_MS || 12000));
 const catalogSyncIntervalMinutes = Math.max(5, Number(process.env.CATALOG_SYNC_INTERVAL_MINUTES || 4320));
 const catalogSyncEnabled = String(process.env.CATALOG_SYNC_ENABLED || "true").toLowerCase() !== "false";
 const catalogSyncMaxPages = Math.max(0, Number(process.env.CATALOG_SYNC_MAX_PAGES_PER_CATEGORY || 0));
@@ -190,6 +194,8 @@ async function getAzureSqlPool() {
       database: azureSqlDatabase,
       user: azureSqlUser,
       password: azureSqlPassword,
+      connectionTimeout: azureSqlConnectTimeoutMs,
+      requestTimeout: azureSqlRequestTimeoutMs,
       options: {
         encrypt: azureSqlEncrypt,
         trustServerCertificate: azureSqlTrustServerCertificate
@@ -199,6 +205,9 @@ async function getAzureSqlPool() {
         min: 0,
         idleTimeoutMillis: 30000
       }
+    }).catch((err) => {
+      azureSqlPoolPromise = null;
+      throw err;
     });
   }
   return azureSqlPoolPromise;
@@ -222,13 +231,61 @@ function parseJsonText(value, fallback) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isAzureSqlWakeError(err) {
+  const message = String(err?.message || err || "").toLowerCase();
+  return [
+    "failed to connect",
+    "connection timeout",
+    "connect etimedout",
+    "request timeout",
+    "timeout expired",
+    "could not connect"
+  ].some((token) => message.includes(token));
+}
+
+async function resetAzureSqlPool() {
+  const currentPromise = azureSqlPoolPromise;
+  azureSqlPoolPromise = null;
+  if (!currentPromise) return;
+  try {
+    const pool = await currentPromise;
+    await pool.close();
+  } catch (_) {
+    void _;
+  }
+}
+
+async function withAzureSqlWakeRetry(label, work) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= azureSqlWakeRetryCount; attempt += 1) {
+    try {
+      return await work();
+    } catch (err) {
+      lastError = err;
+      if (!isAzureSqlWakeError(err) || attempt >= azureSqlWakeRetryCount) {
+        throw err;
+      }
+      console.warn(`[azure-sql] ${label} attempt ${attempt} hit a wake-up timeout; retrying after ${azureSqlWakeRetryDelayMs}ms`);
+      await resetAzureSqlPool();
+      await sleep(azureSqlWakeRetryDelayMs);
+    }
+  }
+  throw lastError;
+}
+
 async function azureQuery(queryText, binder) {
   try {
-    const pool = await getAzureSqlPool();
-    const request = pool.request();
-    if (typeof binder === "function") binder(request);
-    const result = await request.query(queryText);
-    return result.recordset || [];
+    return await withAzureSqlWakeRetry("query", async () => {
+      const pool = await getAzureSqlPool();
+      const request = pool.request();
+      if (typeof binder === "function") binder(request);
+      const result = await request.query(queryText);
+      return result.recordset || [];
+    });
   } catch (err) {
     throw new Error(`Azure SQL request failed: ${err.message}`);
   }
@@ -237,33 +294,39 @@ async function azureQuery(queryText, binder) {
 async function azureReserveNextCaseNumber(category) {
   const categorySlug = slugify(category);
   const sequenceKey = `case_number_${categorySlug}`;
-  const pool = await getAzureSqlPool();
-  const transaction = new sql.Transaction(pool);
   try {
-    await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
-    const request = new sql.Request(transaction);
-    request.input("name", sql.NVarChar(120), sequenceKey);
-    const existing = await request.query("SELECT last_value FROM dbo.case_sequences WITH (UPDLOCK, HOLDLOCK) WHERE name = @name");
-    const nextValue = Number(existing.recordset?.[0]?.last_value || 0) + 1;
-    const write = new sql.Request(transaction);
-    write.input("name", sql.NVarChar(120), sequenceKey);
-    write.input("lastValue", sql.BigInt, nextValue);
-    await write.query(`
-      MERGE dbo.case_sequences AS target
-      USING (SELECT @name AS name, @lastValue AS last_value) AS source
-      ON target.name = source.name
-      WHEN MATCHED THEN
-        UPDATE SET last_value = source.last_value, updated_at = SYSUTCDATETIME()
-      WHEN NOT MATCHED THEN
-        INSERT (name, last_value, updated_at) VALUES (source.name, source.last_value, SYSUTCDATETIME());
-    `);
-    await transaction.commit();
-    return {
-      caseNumber: formatCaseNumber(categorySlug, nextValue),
-      source: "azure-sql"
-    };
+    return await withAzureSqlWakeRetry("reserve-case-number", async () => {
+      const pool = await getAzureSqlPool();
+      const transaction = new sql.Transaction(pool);
+      try {
+        await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+        const request = new sql.Request(transaction);
+        request.input("name", sql.NVarChar(120), sequenceKey);
+        const existing = await request.query("SELECT last_value FROM dbo.case_sequences WITH (UPDLOCK, HOLDLOCK) WHERE name = @name");
+        const nextValue = Number(existing.recordset?.[0]?.last_value || 0) + 1;
+        const write = new sql.Request(transaction);
+        write.input("name", sql.NVarChar(120), sequenceKey);
+        write.input("lastValue", sql.BigInt, nextValue);
+        await write.query(`
+          MERGE dbo.case_sequences AS target
+          USING (SELECT @name AS name, @lastValue AS last_value) AS source
+          ON target.name = source.name
+          WHEN MATCHED THEN
+            UPDATE SET last_value = source.last_value, updated_at = SYSUTCDATETIME()
+          WHEN NOT MATCHED THEN
+            INSERT (name, last_value, updated_at) VALUES (source.name, source.last_value, SYSUTCDATETIME());
+        `);
+        await transaction.commit();
+        return {
+          caseNumber: formatCaseNumber(categorySlug, nextValue),
+          source: "azure-sql"
+        };
+      } catch (err) {
+        try { await transaction.rollback(); } catch (_) { void _; }
+        throw err;
+      }
+    });
   } catch (err) {
-    try { await transaction.rollback(); } catch (_) { void _; }
     throw new Error(`Azure SQL case number failed: ${err.message}`);
   }
 }
