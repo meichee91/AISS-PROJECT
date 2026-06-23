@@ -1845,6 +1845,15 @@
             <option value="Packaging">Packaging</option>
             <option value="Manufacturing">Manufacturing</option>
             <option value="Mining & Quarry">Mining & Quarry</option>
+            <option value="Quarry">Quarry</option>
+            <option value="Power Plant">Power Plant</option>
+            <option value="Steel">Steel</option>
+            <option value="Theme Park">Theme Park</option>
+            <option value="Rubber">Rubber</option>
+            <option value="Tobacco">Tobacco</option>
+            <option value="Sugar">Sugar</option>
+            <option value="Concrete">Concrete</option>
+            <option value="Premix">Premix</option>
             <option value="Palm Oil / Agriculture">Palm Oil / Agriculture</option>
             <option value="Water Treatment">Water Treatment</option>
             <option value="HVAC / Building Services">HVAC / Building Services</option>
@@ -2313,7 +2322,8 @@
         "Frequent failure",
         "Lubrication issue",
         "Contamination",
-        "Fit / clearance issue",
+        "Fit issue",
+        "Clearance issue",
         "Wrong bearing selection",
         "Need replacement / upgrade",
         "Other"
@@ -2771,6 +2781,34 @@
       return recommendationLinesFromCase(item).join("\n");
     }
 
+    function buildReviewerAmendmentPreviewText(item) {
+      if (!item) return "No reviewer amendments yet.";
+      const reviewerName = document.getElementById("reviewerNameInput")?.value.trim() || item.reviewerName || "N/A";
+      const finalStatus = document.getElementById("expertDecisionSelect")?.value || item.caseStatus || "N/A";
+      const expertRating = document.getElementById("expertRatingSelect")?.value || item.expertRating || "N/A";
+      const knowledgeValue = document.getElementById("knowledgeValueSelect")?.value || item.knowledgeValue || "N/A";
+      const finalRecommendation = document.getElementById("correctedRecommendationArea")?.value.trim() || item.correctedRecommendation || editableRecommendationText(item) || "N/A";
+      const expertComment = document.getElementById("expertCommentArea")?.value.trim() || item.expertComment || "None";
+      return [
+        `Reviewer: ${reviewerName}`,
+        `Final status: ${finalStatus}`,
+        `Expert rating: ${expertRating}`,
+        `Knowledge value: ${knowledgeValue}`,
+        "",
+        "Final recommendation:",
+        finalRecommendation,
+        "",
+        "Expert comment:",
+        expertComment
+      ].join("\n");
+    }
+
+    function refreshReviewerAmendmentPreview() {
+      const preview = document.getElementById("reviewerAmendmentPreview");
+      if (!preview || !state.activeCaseDetail) return;
+      preview.textContent = buildReviewerAmendmentPreviewText(state.activeCaseDetail);
+    }
+
     function buildCaseDetailAnalysisPayload(item, reviewerPrompt = "") {
       const payload = item?.casePayload || {};
       const formData = payload.formData && typeof payload.formData === "object" ? payload.formData : payload;
@@ -2861,12 +2899,7 @@
         </div>
         <div class="detail-card full">
           <h4>Original User PDF Actions</h4>
-          <div class="review-assist-meta">Generate, download, or share the original user report PDF if you need to send the untouched report externally.</div>
-          <div class="btn-row" style="margin-top:12px;">
-            <button id="originalPdfBtn" class="btn-secondary" type="button">Generate Original PDF</button>
-            <button id="originalDownloadBtn" class="btn-secondary" type="button">Download Original PDF</button>
-            <button id="originalShareBtn" class="btn-primary" type="button">Share Original PDF</button>
-          </div>
+          <div class="review-assist-meta">Display only. The original user report is shown above for reviewer reference and is not meant to be downloaded from this reviewer page.</div>
         </div>
         <div class="detail-card full">
           <h4>Photos and Attachments</h4>
@@ -2945,6 +2978,8 @@
             <div><strong>SharePoint path:</strong> ${escapeHtml(completedCase?.sharePointFolderPath || "Pending SharePoint connection/upload")}</div>
             <div><strong>Upload status:</strong> ${escapeHtml(completedCase?.uploadStatus || "pending")}</div>
           </div>
+          <div class="review-assist-meta" style="margin-top:12px;">Live preview of what the reviewer has amended so far. This updates when the reviewer edits the final recommendation, adds comment, changes reviewer name, or applies an AI draft.</div>
+          <div class="detail-text-block" id="reviewerAmendmentPreview">${escapeHtml(buildReviewerAmendmentPreviewText(item))}</div>
           <div class="btn-row" style="margin-top:12px;">
             <button id="completedPdfBtn" class="btn-secondary" type="button">${hasCompletedCase ? "Regenerate Completed PDF" : "Generate Completed PDF"}</button>
             <button id="completedDownloadBtn" class="btn-secondary" type="button" ${hasCompletedCase ? "" : "disabled"}>Download Completed PDF</button>
@@ -2987,40 +3022,6 @@
         }
         await sharePdf(pdfItem);
       });
-      document.getElementById("originalPdfBtn")?.addEventListener("click", async () => {
-        const pdfItem = await buildSavedCasePdfItem(state.activeCaseDetail);
-        if (!pdfItem) {
-          showUserMessage("Original user PDF could not be generated right now.");
-          return;
-        }
-        state.reviewCasePdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
-        pushHistory(pdfItem);
-        addActivity("Original User PDF Generated", pdfItem.filename);
-      });
-      document.getElementById("originalDownloadBtn")?.addEventListener("click", async () => {
-        let pdfItem = state.reviewCasePdfCache[state.activeCaseDetail.caseNumber];
-        if (!pdfItem) {
-          pdfItem = await buildSavedCasePdfItem(state.activeCaseDetail);
-          if (!pdfItem) {
-            showUserMessage("Original user PDF could not be generated right now.");
-            return;
-          }
-          state.reviewCasePdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
-        }
-        downloadPdf(pdfItem);
-      });
-      document.getElementById("originalShareBtn")?.addEventListener("click", async () => {
-        let pdfItem = state.reviewCasePdfCache[state.activeCaseDetail.caseNumber];
-        if (!pdfItem) {
-          pdfItem = await buildSavedCasePdfItem(state.activeCaseDetail);
-          if (!pdfItem) {
-            showUserMessage("Original user PDF could not be generated right now.");
-            return;
-          }
-          state.reviewCasePdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
-        }
-        await sharePdf(pdfItem);
-      });
       document.getElementById("expertAiRegenerateBtn")?.addEventListener("click", regenerateExpertAiDraft);
       document.getElementById("expertAiUseDraftBtn")?.addEventListener("click", () => {
         const assistState = state.expertAiAssistByCase[state.activeCaseDetail?.caseNumber || ""];
@@ -3032,8 +3033,14 @@
         if (!correctedRecommendationArea) return;
         correctedRecommendationArea.value = assistState.draftText;
         correctedRecommendationArea.focus();
+        refreshReviewerAmendmentPreview();
         addActivity("Expert AI Draft Applied", `${state.activeCaseDetail.caseNumber} draft copied into final recommendation.`);
         showUserMessage("AI draft copied into the editable final recommendation field.");
+      });
+      ["expertDecisionSelect", "expertRatingSelect", "knowledgeValueSelect", "reviewerNameInput", "expertCommentArea", "correctedRecommendationArea"].forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", refreshReviewerAmendmentPreview);
+        el?.addEventListener("change", refreshReviewerAmendmentPreview);
       });
     }
 
