@@ -4348,6 +4348,10 @@
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
       return {
+        kind: "analysis",
+        caseNumber: state.submission?.caseNumber || state.caseNumber || "N/A",
+        user: state.submission?.user || state.userName || "N/A",
+        category: state.category || "N/A",
         filename: pdfFilename(),
         created: nowStamp(),
         blob,
@@ -4453,6 +4457,11 @@
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
       return {
+        kind: "completed",
+        caseNumber: item?.caseNumber || "N/A",
+        user: item?.casePayload?.user || item?.casePayload?.userName || "N/A",
+        reviewerName: item?.reviewerName || "",
+        category: item?.category || "N/A",
         filename: completedPdfFilename(item),
         created: nowStamp(),
         blob,
@@ -4480,21 +4489,24 @@
     }
 
     function shareTextFor(item) {
-      const lines = recLinesForPdf().slice(0, 14).filter(Boolean);
-      const caseNumber = state.submission?.caseNumber || state.caseNumber || "N/A";
-      const user = state.submission?.user || state.userName || "N/A";
-      const category = state.category || "N/A";
+      const caseNumber = item?.caseNumber || state.submission?.caseNumber || state.caseNumber || "N/A";
+      const user = item?.user || state.submission?.user || state.userName || "N/A";
+      const category = item?.category || state.category || "N/A";
+      const reviewerName = item?.reviewerName || "";
       const recallLink = caseNumber !== "N/A" ? buildCaseLink(caseNumber) : "";
-      return [
+      const lines = [
         "AI Sales Support analysis and recommendation",
         `Case number: ${caseNumber}`,
-        `User: ${user}`,
-        `Product category: ${category}`,
-        recallLink ? `Case link: ${recallLink}` : "",
-        item?.filename ? `PDF: ${item.filename}` : "",
-        "",
-        ...lines
-      ].join("\n").trim();
+        `User: ${user}`
+      ];
+      if (item?.kind === "completed" && reviewerName) {
+        lines.push(`Reviewer : ${reviewerName}`);
+      }
+      lines.push(`Product category: ${category}`);
+      if (recallLink) {
+        lines.push(`Case link: ${recallLink}`);
+      }
+      return lines.join("\n").trim();
     }
 
     function fallbackExternalShare(item) {
