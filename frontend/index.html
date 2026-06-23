@@ -1712,6 +1712,26 @@
       gap: 10px;
     }
 
+    .review-assist {
+      border: 1px solid #eadde0;
+      border-radius: 12px;
+      background: #fff9fa;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .review-assist-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .review-assist .detail-text-block {
+      margin-top: 0;
+      white-space: pre-wrap;
+    }
+
     @media (max-width: 1080px) {
       .detail-grid,
       .review-grid,
@@ -2355,6 +2375,7 @@
       activeShareItem: null,
         history: [],
         completedPdfCache: {},
+        expertAiAssistByCase: {},
         reanalysisRound: 0,
         lastContextHash: "",
         lastUpdatedAt: "",
@@ -2689,6 +2710,62 @@
       `;
     }
 
+    function recommendationLinesFromCase(item) {
+      return Array.isArray(item?.aiResponse?.recommendations) ? item.aiResponse.recommendations.filter(Boolean) : [];
+    }
+
+    function editableRecommendationText(item) {
+      const existing = String(item?.correctedRecommendation || "").trim();
+      if (existing) return existing;
+      return recommendationLinesFromCase(item).join("\n");
+    }
+
+    function buildCaseDetailAnalysisPayload(item, reviewerPrompt = "") {
+      const payload = item?.casePayload || {};
+      const formData = payload.formData && typeof payload.formData === "object" ? payload.formData : payload;
+      const savedAssets = payload.savedAssets || {};
+      const followUpAnswers = payload.followUpAnswers && typeof payload.followUpAnswers === "object" ? payload.followUpAnswers : {};
+      const chatUpdates = Array.isArray(payload.chatUpdates) ? payload.chatUpdates : [];
+      return {
+        caseNumber: item?.caseNumber || payload.caseNumber || "",
+        user: payload.user || payload.userName || "N/A",
+        referHistoricalCases: false,
+        industry: payload.industry || "NA",
+        category: item?.category || payload.category || state.category || "",
+        formData,
+        formPhotos: Array.isArray(savedAssets.formPhotos) ? savedAssets.formPhotos.map((asset) => ({
+          name: asset.name,
+          type: asset.type || "unknown",
+          size: asset.size || 0
+        })) : [],
+        followUpAnswers,
+        chatUpdates,
+        userReview: payload.userReview || {},
+        currentAiRecommendation: {
+          recommendations: recommendationLinesFromCase(item),
+          reason: item?.aiResponse?.reason || "",
+          suggestedByAI: item?.aiResponse?.suggestedByAI || ""
+        },
+        userCommentToExpert: item?.userComment || payload?.userReview?.commentToExpert || "",
+        reviewerPrompt: reviewerPrompt.trim(),
+        expertCommentDraft: document.getElementById("expertCommentArea")?.value.trim() || "",
+        correctedRecommendationDraft: document.getElementById("correctedRecommendationArea")?.value.trim() || ""
+      };
+    }
+
+    function formatExpertAiDraft(aiResult) {
+      const recommendationLines = Array.isArray(aiResult?.recommendation) ? aiResult.recommendation.filter(Boolean) : [];
+      const lines = recommendationLines.map((line, index) => `${index + 1}. ${line}`);
+      if (aiResult?.reason) {
+        if (lines.length) lines.push("");
+        lines.push(`Reason: ${aiResult.reason}`);
+      }
+      if (aiResult?.suggestedByAI) {
+        lines.push(`Suggested by AI: ${aiResult.suggestedByAI}`);
+      }
+      return lines.join("\n").trim();
+    }
+
     function renderCaseDetail(item) {
       state.activeCaseDetail = item;
       caseDetailTitle.textContent = `${item.caseNumber} | ${item.category}`;
@@ -2697,6 +2774,14 @@
       const aiParts = Array.isArray(item?.aiResponse?.parts) ? item.aiResponse.parts.join(", ") : "";
       const completedCase = item?.casePayload?.completedCase || null;
       const hasCompletedCase = !!completedCase;
+      const editableRecommendation = editableRecommendationText(item);
+      const expertAiAssist = state.expertAiAssistByCase[item.caseNumber] || {
+        prompt: "",
+        draftText: "",
+        runNote: "",
+        updatedAt: "",
+        model: ""
+      };
       caseDetailBody.innerHTML = `
         <div class="detail-card">
           <h4>Case Summary</h4>
@@ -2776,8 +2861,25 @@
               <textarea id="expertCommentArea" placeholder="Explain the technical verification, concern, or decision reason.">${escapeHtml(item.expertComment || "")}</textarea>
             </div>
             <div>
-              <label for="correctedRecommendationArea">Correct recommendation</label>
-              <textarea id="correctedRecommendationArea" placeholder="Required when status is Verified - Corrected.">${escapeHtml(item.correctedRecommendation || "")}</textarea>
+              <label for="correctedRecommendationArea">Final recommendation (editable)</label>
+              <textarea id="correctedRecommendationArea" placeholder="Required when status is Verified - Corrected.">${escapeHtml(editableRecommendation)}</textarea>
+              <div class="review-assist-meta">This is the expert-editable final recommendation. You can revise it directly, or ask AI to draft an updated version first.</div>
+            </div>
+            <div class="review-assist">
+              <div>
+                <label for="expertAiPromptArea">Optional message to AI before regenerate</label>
+                <textarea id="expertAiPromptArea" placeholder="Example: Focus on dust contamination and recommend a more practical replacement note for customer sharing.">${escapeHtml(expertAiAssist.prompt || "")}</textarea>
+                <div class="review-assist-meta">Optional only. The expert can message AI here, regenerate a draft, then decide whether to use or edit it.</div>
+              </div>
+              <div class="btn-row">
+                <button id="expertAiRegenerateBtn" class="btn-secondary" type="button">Regenerate with AI</button>
+                <button id="expertAiUseDraftBtn" class="btn-secondary" type="button" ${expertAiAssist.draftText ? "" : "disabled"}>Use AI Draft</button>
+              </div>
+              <div>
+                <label>AI draft recommendation</label>
+                <div id="expertAiDraftMeta" class="review-assist-meta">${expertAiAssist.updatedAt ? `Generated ${escapeHtml(expertAiAssist.updatedAt)}${expertAiAssist.model ? ` using ${escapeHtml(expertAiAssist.model.toUpperCase())}` : ""}${expertAiAssist.runNote ? ` - ${escapeHtml(expertAiAssist.runNote)}` : ""}` : "No AI draft generated yet."}</div>
+                <div id="expertAiDraftText" class="detail-text-block">${escapeHtml(expertAiAssist.draftText || "No AI draft generated yet.")}</div>
+              </div>
             </div>
             <div class="btn-row">
               <button id="saveExpertReviewBtn" class="btn-primary" type="submit">Save Expert Review</button>
@@ -2828,6 +2930,20 @@
           return;
         }
         await sharePdf(pdfItem);
+      });
+      document.getElementById("expertAiRegenerateBtn")?.addEventListener("click", regenerateExpertAiDraft);
+      document.getElementById("expertAiUseDraftBtn")?.addEventListener("click", () => {
+        const assistState = state.expertAiAssistByCase[state.activeCaseDetail?.caseNumber || ""];
+        if (!assistState?.draftText) {
+          showUserMessage("Generate an AI draft first.");
+          return;
+        }
+        const correctedRecommendationArea = document.getElementById("correctedRecommendationArea");
+        if (!correctedRecommendationArea) return;
+        correctedRecommendationArea.value = assistState.draftText;
+        correctedRecommendationArea.focus();
+        addActivity("Expert AI Draft Applied", `${state.activeCaseDetail.caseNumber} draft copied into final recommendation.`);
+        showUserMessage("AI draft copied into the editable final recommendation field.");
       });
     }
 
@@ -3541,8 +3657,8 @@
       return { analysis, actions };
     }
 
-    function selectBrands(context) {
-      const list = categories[state.category]?.brands || ["NIS"];
+    function selectBrands(context, categoryName = state.category) {
+      const list = categories[categoryName]?.brands || categories[state.category]?.brands || ["NIS"];
       const t = context.toLowerCase();
       const mentioned = list.filter((b) => t.includes(b.toLowerCase()));
       if (mentioned.length >= 2) return mentioned.slice(0, 2);
@@ -3609,6 +3725,63 @@
       }
     }
 
+    async function regenerateExpertAiDraft() {
+      if (!state.activeCaseDetail) return;
+      const regenerateBtn = document.getElementById("expertAiRegenerateBtn");
+      const useDraftBtn = document.getElementById("expertAiUseDraftBtn");
+      const draftMeta = document.getElementById("expertAiDraftMeta");
+      const draftText = document.getElementById("expertAiDraftText");
+      const expertPrompt = document.getElementById("expertAiPromptArea")?.value.trim() || "";
+      const caseNumber = state.activeCaseDetail.caseNumber;
+      const categoryName = state.activeCaseDetail.category || state.category;
+      const analysisPayload = buildCaseDetailAnalysisPayload(state.activeCaseDetail, expertPrompt);
+      const chosenModel = chooseModelForComplexity(analysisPayload);
+
+      try {
+        if (regenerateBtn) {
+          regenerateBtn.disabled = true;
+          regenerateBtn.textContent = "Regenerating...";
+        }
+        if (draftMeta) draftMeta.textContent = "AI is preparing an updated recommendation draft for expert review...";
+        if (draftText) draftText.textContent = "Working on it...";
+
+        const aiResult = await requestAIRecommendation(analysisPayload, { category: categoryName });
+        const nextState = {
+          prompt: expertPrompt,
+          draftText: formatExpertAiDraft(aiResult),
+          runNote: aiResult?.runNote || "",
+          updatedAt: nowStamp(),
+          model: chosenModel
+        };
+        state.expertAiAssistByCase[caseNumber] = nextState;
+
+        if (draftMeta) {
+          draftMeta.textContent = `Generated ${nextState.updatedAt}${nextState.model ? ` using ${nextState.model.toUpperCase()}` : ""}${nextState.runNote ? ` - ${nextState.runNote}` : ""}`;
+        }
+        if (draftText) {
+          draftText.textContent = nextState.draftText || "AI did not return a draft recommendation.";
+        }
+        if (useDraftBtn) {
+          if (nextState.draftText) {
+            useDraftBtn.removeAttribute("disabled");
+          } else {
+            useDraftBtn.setAttribute("disabled", "disabled");
+          }
+        }
+        addActivity("Expert AI Draft Updated", `${caseNumber} regenerated for reviewer review.`);
+        showUserMessage("AI draft regenerated. Review it, then edit or apply it into the final recommendation.");
+      } catch (err) {
+        if (draftMeta) draftMeta.textContent = "AI draft could not be regenerated right now.";
+        if (draftText) draftText.textContent = err?.message || "AI draft could not be regenerated right now.";
+        showUserMessage(err?.message || "AI draft could not be regenerated right now.");
+      } finally {
+        if (regenerateBtn) {
+          regenerateBtn.disabled = false;
+          regenerateBtn.textContent = "Regenerate with AI";
+        }
+      }
+    }
+
     function buildAnalysisPayload(payload) {
       return {
         caseNumber: state.caseNumber,
@@ -3649,10 +3822,10 @@
       return chunks.join("\n").trim();
     }
 
-    async function requestAIRecommendation(fullPayload) {
+    async function requestAIRecommendation(fullPayload, options = {}) {
       const model = chooseModelForComplexity(fullPayload);
-
-      const allowedBrands = categories[state.category]?.brands || ["NIS"];
+      const categoryName = options.category || fullPayload?.category || state.category;
+      const allowedBrands = categories[categoryName]?.brands || categories[state.category]?.brands || ["NIS"];
       const schema = {
         type: "object",
         additionalProperties: false,
@@ -3747,7 +3920,7 @@
       parsed.brands = safeBrands.slice(0, 2);
 
         if (!Array.isArray(parsed.followUpQuestions) || !parsed.followUpQuestions.length) {
-          parsed.followUpQuestions = [...(categories[state.category]?.followups || [])].slice(0, 3);
+          parsed.followUpQuestions = [...(categories[categoryName]?.followups || categories[state.category]?.followups || [])].slice(0, 3);
         }
         parsed.followUpQuestions = parsed.followUpQuestions.slice(0, 3);
         parsed.retrievedCaseNumbers = Array.isArray(data?.retrieved_case_numbers) ? data.retrieved_case_numbers : [];
