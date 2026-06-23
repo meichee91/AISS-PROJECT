@@ -2094,25 +2094,75 @@
       Bearings: {
         short: "bearings",
         icon: "鈿欙笍",
-        brands: ["Regal Rexnord", "SKF", "Lovejoy", "DODGE", "KTR", "Martin", "NIS"],
+        brands: ["SKF", "FAG", "TIMKEN", "INA", "DODGE", "NIS", "THK", "JJ", "SAMICK", "SNB", "TORRINGTON", "Others"],
         fields: [
-          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, compressor" },
-          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. broken, noise, replacement, upgrade" },
-          { id: "existing", label: "Existing brand / model", type: "text", placeholder: "If any" },
-          { id: "type", label: "Coupling type", type: "select", options: ["Gear", "Grid", "Jaw", "Tyre", "Disc", "NA"] },
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, crusher, fan" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. noise, overheating, frequent failure, replacement, upgrade" },
+          { id: "existing", label: "Existing brand / bearing code", type: "text", placeholder: "If any" },
+          { id: "bearingFamily", label: "Bearing main type", type: "select", options: ["Ball Bearings", "Roller Bearings", "Thrust Bearings", "Track & Guide Bearings", "Linear Bearings", "Other"] },
+          {
+            id: "type",
+            label: "Bearing sub type",
+            type: "select",
+            options: ["Select main type first"],
+            dynamicOptions: {
+              dependsOn: "bearingFamily",
+              placeholder: "Select sub type",
+              emptyPlaceholder: "Select main type first",
+              map: {
+                "Ball Bearings": [
+                  "Single Row Deep Groove Ball Bearing",
+                  "Double Row Deep Groove Ball Bearing",
+                  "Single Row Angular Contact Ball Bearing",
+                  "Double Row Angular Contact Ball Bearing",
+                  "Self-Aligning Ball Bearing",
+                  "Four-Point Contact Ball Bearing",
+                  "Thrust Ball Bearing",
+                  "Other"
+                ],
+                "Roller Bearings": [
+                  "Cylindrical Roller Bearing",
+                  "Spherical Roller Bearing",
+                  "Tapered Roller Bearing",
+                  "CARB Toroidal Roller Bearing",
+                  "Other"
+                ],
+                "Thrust Bearings": [
+                  "Spherical Roller Thrust Bearing",
+                  "Cylindrical Roller Thrust Bearing",
+                  "Thrust Ball Bearing",
+                  "Other"
+                ],
+                "Track & Guide Bearings": [
+                  "Track Roller Bearing",
+                  "Cam Follower Bearing",
+                  "Yoke Roller Bearing",
+                  "Other"
+                ],
+                "Linear Bearings": [
+                  "Linear Motion Bearing",
+                  "Other"
+                ],
+                "Other": [
+                  "Other"
+                ]
+              }
+            }
+          },
+          { id: "brand", label: "Preferred / required brand", type: "select", options: ["SKF", "FAG", "TIMKEN", "INA", "DODGE", "NIS", "THK", "JJ", "SAMICK", "SNB", "TORRINGTON", "Others", "NA"] },
           { section: "Operating Conditions" },
           { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
           { id: "speed", label: "Speed (RPM)", type: "number", placeholder: "Enter RPM" },
-          { id: "environment", label: "Environment", type: "select", options: ["Outdoor", "Dust", "Oil", "Clean", "NA"] },
+          { id: "environment", label: "Environment", type: "select", options: ["Outdoor", "Dust", "Oil", "Clean", "Moisture", "High temperature", "NA"] },
           { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
           { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
           { id: "failureFrequency", label: "Failure frequency", type: "select", options: ["Often", "Sometimes", "Rare", "NA"] },
           { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
-          "Did issue happen at startup, steady run, or shock loading?",
-          "Any recent alignment or installation change before failure started?",
-          "Which side fails first: driver side, driven side, or both?"
+          "Which bearing position is failing now: drive end, non-drive end, wheel end, or guide point?",
+          "What is the main symptom now: noise, heat, vibration, leakage, looseness, or seizure?",
+          "Any shaft or housing wear, lubrication issue, or contamination found during inspection?"
         ]
       },
       Belt: {
@@ -2237,7 +2287,7 @@
 
     const partHints = {
       Coupling: ["Lovejoy L-series (verify bore/keyway)", "KTR ROTEX (verify hub size/spider hardness)"],
-      Bearings: ["Lovejoy L-series (verify bore/keyway)", "KTR ROTEX (verify hub size/spider hardness)"],
+      Bearings: ["SKF bearing reference (verify dimensions/clearance)", "FAG or TIMKEN equivalent (verify load/speed fit)"],
       Belt: ["Optibelt SPA/SPB range (verify section/length)", "Bando timing belt series (verify pitch/width)"],
       Chain: ["DID roller chain (verify pitch/strand)", "Tsubak RS series (verify attachment/length)"],
       Gearbox: ["Motology helical reducer (verify ratio/service factor)", "Regal Rexnord reducer (verify mounting/torque)"],
@@ -2258,13 +2308,14 @@
         "Other"
       ],
       Bearings: [
-        "Misalignment",
-        "Element wear or breakage",
-        "Vibration",
         "Noise",
-        "Overload or shock load",
+        "Vibration",
+        "Overheating",
         "Frequent failure",
-        "Wrong sizing",
+        "Lubrication issue",
+        "Contamination",
+        "Fit / clearance issue",
+        "Wrong bearing selection",
         "Need replacement / upgrade",
         "Other"
       ],
@@ -3320,7 +3371,50 @@
         el.id = field.id;
         el.name = field.id;
       }
+      if (field.dynamicOptions) {
+        el.dataset.dynamicDependsOn = field.dynamicOptions.dependsOn || "";
+      }
       return el;
+    }
+
+    function applyDynamicFieldOptions(categoryName) {
+      const cat = categories[categoryName];
+      if (!cat) return;
+      cat.fields.forEach((field) => {
+        if (!field.dynamicOptions) return;
+        const target = document.getElementById(field.id);
+        const parentId = field.dynamicOptions.dependsOn;
+        const parent = document.getElementById(parentId);
+        if (!target || !parent) return;
+
+        const refreshOptions = () => {
+          const parentValue = String(parent.value || "").trim();
+          const optionList = field.dynamicOptions.map[parentValue] || [];
+          const emptyText = parentValue
+            ? (field.dynamicOptions.placeholder || "Select")
+            : (field.dynamicOptions.emptyPlaceholder || "Select");
+          const previous = String(target.value || "").trim();
+          target.innerHTML = "";
+          const defaultOpt = document.createElement("option");
+          defaultOpt.value = "";
+          defaultOpt.textContent = emptyText;
+          target.appendChild(defaultOpt);
+          optionList.forEach((option) => {
+            const opt = document.createElement("option");
+            opt.value = option;
+            opt.textContent = option;
+            target.appendChild(opt);
+          });
+          if (optionList.includes(previous)) {
+            target.value = previous;
+          } else {
+            target.value = "";
+          }
+        };
+
+        parent.addEventListener("change", refreshOptions);
+        refreshOptions();
+      });
     }
 
     function renderForm(categoryName) {
@@ -3405,6 +3499,7 @@
         event.target.value = "";
       });
       clearFormBtn.addEventListener("click", () => renderForm(categoryName));
+      applyDynamicFieldOptions(categoryName);
 
       ["dragenter", "dragover"].forEach((evt) => {
         zone.addEventListener(evt, (event) => {
