@@ -2098,7 +2098,7 @@
         fields: [
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, crusher, fan" },
           { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. noise, overheating, frequent failure, replacement, upgrade" },
-          { id: "existing", label: "Existing brand / bearing code", type: "text", placeholder: "If any" },
+          { id: "existing", label: "Existing brand (customer using now)", type: "select", options: ["SKF", "FAG", "TIMKEN", "INA", "DODGE", "NIS", "THK", "JJ", "SAMICK", "SNB", "TORRINGTON", "Others"] },
           { id: "bearingFamily", label: "Bearing main type", type: "select", options: ["Ball Bearings", "Roller Bearings", "Thrust Bearings", "Track & Guide Bearings", "Linear Bearings", "Other"] },
           {
             id: "type",
