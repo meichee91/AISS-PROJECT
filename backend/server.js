@@ -31,6 +31,7 @@ const azureSqlConnectTimeoutMs = Math.max(15000, Number(process.env.AZURE_SQL_CO
 const azureSqlRequestTimeoutMs = Math.max(15000, Number(process.env.AZURE_SQL_REQUEST_TIMEOUT_MS || 60000));
 const azureSqlWakeRetryCount = Math.max(1, Number(process.env.AZURE_SQL_WAKE_RETRY_COUNT || 3));
 const azureSqlWakeRetryDelayMs = Math.max(1000, Number(process.env.AZURE_SQL_WAKE_RETRY_DELAY_MS || 12000));
+const sharePointRootFolder = String(process.env.SHAREPOINT_ROOT_FOLDER || "AISS").trim() || "AISS";
 const catalogSyncIntervalMinutes = Math.max(5, Number(process.env.CATALOG_SYNC_INTERVAL_MINUTES || 4320));
 const catalogSyncEnabled = String(process.env.CATALOG_SYNC_ENABLED || "true").toLowerCase() !== "false";
 const catalogSyncMaxPages = Math.max(0, Number(process.env.CATALOG_SYNC_MAX_PAGES_PER_CATEGORY || 0));
@@ -50,6 +51,7 @@ const CASE_STATUS = {
   VERIFIED_REJECTED: "Verified - Rejected",
   ARCHIVED: "Archived"
 };
+const ALLOWED_GPT_MODELS = ["auto", "gpt-5.4-mini", "gpt-5.4"];
 
 app.use(express.json({ limit: "25mb" }));
 
@@ -68,6 +70,14 @@ function chooseModel(payload) {
   score += Math.min(3, photoCount);
 
   return score >= 10 ? "gpt-5.4" : "gpt-5.4-mini";
+}
+
+function normalizeRequestedModel(value, payload) {
+  const requested = String(value || "").trim().toLowerCase();
+  if (!requested || requested === "auto") {
+    return chooseModel(payload);
+  }
+  return ALLOWED_GPT_MODELS.includes(requested) ? requested : chooseModel(payload);
 }
 
 function hasAzureOpenAi() {
@@ -659,6 +669,18 @@ async function azureUpdateExpertReview(caseNumber, payload) {
     throw new Error("Case not found.");
   }
   const { learningEligible, referenceType } = deriveReferenceMeta(payload.caseStatus);
+  const nextCasePayload = {
+    ...(currentCase.casePayload || {})
+  };
+  if (payload.completedCase && typeof payload.completedCase === "object") {
+    nextCasePayload.completedCase = {
+      ...(nextCasePayload.completedCase || {}),
+      ...payload.completedCase,
+      finalStatus: payload.caseStatus,
+      reviewerName: payload.reviewerName || nextCasePayload.completedCase?.reviewerName || "",
+      reviewedAt: new Date().toISOString()
+    };
+  }
   await azureQuery(`
     UPDATE ${currentCase.sourceTable}
     SET
@@ -671,6 +693,7 @@ async function azureUpdateExpertReview(caseNumber, payload) {
       reviewer_name = @reviewerName,
       learning_eligible = @learningEligible,
       reference_type = @referenceType,
+      case_payload = @casePayload,
       reviewed_at = @reviewedAt,
       updated_at = SYSUTCDATETIME()
     WHERE case_number = @caseNumber;
@@ -685,6 +708,7 @@ async function azureUpdateExpertReview(caseNumber, payload) {
     request.input("reviewerName", sql.NVarChar(255), payload.reviewerName || "");
     request.input("learningEligible", sql.Bit, learningEligible ? 1 : 0);
     request.input("referenceType", sql.NVarChar(20), referenceType);
+    request.input("casePayload", sql.NVarChar(sql.MAX), jsonText(nextCasePayload, "{}"));
     request.input("reviewedAt", sql.DateTime2, new Date());
   });
   return azureFindHistoricalCase(caseNumber);
@@ -1227,12 +1251,30 @@ app.post("/api/cases/:caseNumber/expert-review", async (req, res) => {
       expertComment: cleanLargeText(body.expertComment || "", 6000),
       correctedRecommendation: cleanLargeText(body.correctedRecommendation || "", 6000),
       knowledgeValue: cleanText(body.knowledgeValue || "", 20),
-      reviewerName: cleanText(body.reviewerName || "", 255)
+      reviewerName: cleanText(body.reviewerName || "", 255),
+      completedCase: body.completedCase && typeof body.completedCase === "object"
+        ? {
+            pdfName: cleanText(body.completedCase.pdfName || "", 255),
+            sqlFolderPath: cleanText(body.completedCase.sqlFolderPath || "", 400),
+            sharePointFolderPath: cleanText(body.completedCase.sharePointFolderPath || "", 500),
+            sharePointLibrary: cleanText(body.completedCase.sharePointLibrary || "", 120),
+            sharePointRootFolder: cleanText(body.completedCase.sharePointRootFolder || sharePointRootFolder, 120),
+            generatedAt: cleanText(body.completedCase.generatedAt || "", 80),
+            uploadStatus: cleanText(body.completedCase.uploadStatus || "pending", 40)
+          }
+        : null
     });
     return res.json({ saved: true, item });
   } catch (err) {
     return res.status(500).json({ error: err.message || "Unable to save expert review." });
   }
+});
+
+app.get("/api/app-config", async (_req, res) => {
+  return res.json({
+    allowedModels: ALLOWED_GPT_MODELS,
+    sharePointRootFolder
+  });
 });
 
 app.get("/api/admin/summary", async (req, res) => {
@@ -1310,7 +1352,7 @@ app.post("/api/analyze", async (req, res) => {
     const body = req.body || {};
     caseContext = body.caseContext || {};
     const similarCases = await fetchSimilarHistoricalCases(caseContext);
-    model = body.model || chooseModel(body);
+    model = normalizeRequestedModel(body.model, body);
     const requestBody = {
       ...body,
       model

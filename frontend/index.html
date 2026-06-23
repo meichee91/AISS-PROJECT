@@ -1777,6 +1777,17 @@
         </section>
 
         <section class="card">
+          <h2>AI Model</h2>
+          <label for="modelSelect">Choose model</label>
+          <select id="modelSelect">
+            <option value="auto">Auto</option>
+            <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+            <option value="gpt-5.4">GPT-5.4</option>
+          </select>
+          <p class="tiny">Auto uses case complexity. Manual selection overrides the backend default with an approved model.</p>
+        </section>
+
+        <section class="card">
           <h2>Industry</h2>
           <label for="industrySelect">Choose industry</label>
           <select id="industrySelect">
@@ -2274,10 +2285,12 @@
       feedbackRating: "",
       feedbackComment: "",
       userExpertComment: "",
+      selectedModel: "auto",
       currentCaseStatus: "",
       historicalSaveKey: "",
       activeShareItem: null,
         history: [],
+        completedPdfCache: {},
         reanalysisRound: 0,
         lastContextHash: "",
         lastUpdatedAt: "",
@@ -2285,12 +2298,17 @@
         lastAnalysisMeta: null,
         opsSummary: null,
         caseReportItems: [],
-        activeCaseDetail: null
+        activeCaseDetail: null,
+        appConfig: {
+          allowedModels: ["auto", "gpt-5.4-mini", "gpt-5.4"],
+          sharePointRootFolder: "AISS"
+        }
       };
 
     const categorySelect = document.getElementById("categorySelect");
     const categoryHint = document.getElementById("categoryHint");
     const userNameInput = document.getElementById("userNameInput");
+    const modelSelect = document.getElementById("modelSelect");
     const industrySelect = document.getElementById("industrySelect");
     const reqForm = document.getElementById("reqForm");
     const recContent = document.getElementById("recContent");
@@ -2356,6 +2374,13 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+    }
+
+    function slugify(value) {
+      return String(value || "other")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "other";
     }
 
     function nowStamp() {
@@ -2606,6 +2631,8 @@
       caseDetailSubtitle.innerHTML = `${statusPill(item.caseStatus)} <span style="margin-left:8px;">User rating: <strong>${escapeHtml(item.rating || "-")}</strong></span>`;
       const aiBrands = Array.isArray(item?.aiResponse?.brands) ? item.aiResponse.brands.join(", ") : "";
       const aiParts = Array.isArray(item?.aiResponse?.parts) ? item.aiResponse.parts.join(", ") : "";
+      const completedCase = item?.casePayload?.completedCase || null;
+      const hasCompletedCase = !!completedCase;
       caseDetailBody.innerHTML = `
         <div class="detail-card">
           <h4>Case Summary</h4>
@@ -2693,10 +2720,51 @@
             </div>
           </form>
         </div>
+        <div class="detail-card full">
+          <h4>Completed Case PDF</h4>
+          <div class="detail-list">
+            <div><strong>SQL folder path:</strong> ${escapeHtml(completedCase?.sqlFolderPath || "Will be created after expert review save")}</div>
+            <div><strong>SharePoint path:</strong> ${escapeHtml(completedCase?.sharePointFolderPath || "Pending SharePoint connection/upload")}</div>
+            <div><strong>Upload status:</strong> ${escapeHtml(completedCase?.uploadStatus || "pending")}</div>
+          </div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button id="completedPdfBtn" class="btn-secondary" type="button">${hasCompletedCase ? "Regenerate Completed PDF" : "Generate Completed PDF"}</button>
+            <button id="completedDownloadBtn" class="btn-secondary" type="button" ${hasCompletedCase ? "" : "disabled"}>Download Completed PDF</button>
+            <button id="completedShareBtn" class="btn-primary" type="button" ${hasCompletedCase ? "" : "disabled"}>Share Completed PDF</button>
+          </div>
+        </div>
       `;
       caseDetailModal.classList.add("active");
       caseDetailModal.setAttribute("aria-hidden", "false");
       document.getElementById("expertReviewForm")?.addEventListener("submit", saveExpertReview);
+      document.getElementById("completedPdfBtn")?.addEventListener("click", async () => {
+        const pdfItem = await buildCompletedPdfItem(state.activeCaseDetail);
+        if (!pdfItem) {
+          showUserMessage("Completed case PDF could not be generated right now.");
+          return;
+        }
+        state.completedPdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
+        pushHistory(pdfItem);
+        addActivity("Completed PDF Generated", pdfItem.filename);
+        document.getElementById("completedDownloadBtn")?.removeAttribute("disabled");
+        document.getElementById("completedShareBtn")?.removeAttribute("disabled");
+      });
+      document.getElementById("completedDownloadBtn")?.addEventListener("click", () => {
+        let pdfItem = state.completedPdfCache[state.activeCaseDetail.caseNumber];
+        if (!pdfItem) {
+          showUserMessage("Generate the completed PDF first in this browser session.");
+          return;
+        }
+        downloadPdf(pdfItem);
+      });
+      document.getElementById("completedShareBtn")?.addEventListener("click", async () => {
+        let pdfItem = state.completedPdfCache[state.activeCaseDetail.caseNumber];
+        if (!pdfItem) {
+          showUserMessage("Generate the completed PDF first in this browser session.");
+          return;
+        }
+        await sharePdf(pdfItem);
+      });
     }
 
     async function openCaseDetail(caseNumber) {
@@ -2722,6 +2790,7 @@
         const reviewerName = document.getElementById("reviewerNameInput")?.value.trim() || "";
         const expertComment = document.getElementById("expertCommentArea")?.value.trim() || "";
         const correctedRecommendation = document.getElementById("correctedRecommendationArea")?.value.trim() || "";
+        const completedCase = buildCompletedCaseStoragePlan(state.activeCaseDetail, caseStatus);
         const response = await fetch(`/api/cases/${encodeURIComponent(state.activeCaseDetail.caseNumber)}/expert-review`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2731,17 +2800,24 @@
             knowledgeValue,
             reviewerName,
             expertComment,
-            correctedRecommendation
+            correctedRecommendation,
+            completedCase
           })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data?.saved) {
           throw new Error(data?.error || "Unable to save expert review.");
         }
+        const completedPdf = await buildCompletedPdfItem(data.item);
+        if (completedPdf) {
+          state.completedPdfCache[data.item.caseNumber] = completedPdf;
+          pushHistory(completedPdf);
+        }
         addActivity("Expert Review Saved", `${state.activeCaseDetail.caseNumber} updated to ${caseStatus}.`);
         renderCaseDetail(data.item);
         await refreshCaseReport();
         await refreshOpsSummary();
+        showUserMessage(`Expert review completed. ${completedPdf ? "Completed PDF is ready for download or share." : "You can now generate the completed PDF."}`);
       } catch (err) {
         showUserMessage(err.message, "Expert review could not be saved right now.");
       }
@@ -3422,6 +3498,9 @@
     }
 
     function chooseModelForComplexity(fullPayload) {
+      if (state.selectedModel && state.selectedModel !== "auto") {
+        return state.selectedModel;
+      }
       let score = 0;
       const formText = JSON.stringify(fullPayload.formData || {});
       const followCount = Object.keys(fullPayload.followUpAnswers || {}).length;
@@ -3436,6 +3515,34 @@
       score += Math.min(3, photoCount);
 
       return score >= 10 ? "gpt-5.4" : "gpt-5.4-mini";
+    }
+
+    async function loadAppConfig() {
+      try {
+        const response = await fetch("/api/app-config");
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+        state.appConfig.allowedModels = Array.isArray(data.allowedModels) && data.allowedModels.length
+          ? data.allowedModels
+          : state.appConfig.allowedModels;
+        state.appConfig.sharePointRootFolder = data.sharePointRootFolder || state.appConfig.sharePointRootFolder;
+        if (modelSelect) {
+          const options = [
+            { value: "auto", label: "Auto" },
+            ...state.appConfig.allowedModels
+              .filter((value) => value !== "auto")
+              .map((value) => ({
+                value,
+                label: value === "gpt-5.4-mini" ? "GPT-5.4 Mini" : value.toUpperCase()
+              }))
+          ];
+          modelSelect.innerHTML = options.map((option) =>
+            `<option value="${escapeHtml(option.value)}" ${option.value === state.selectedModel ? "selected" : ""}>${escapeHtml(option.label)}</option>`
+          ).join("");
+        }
+      } catch (_) {
+        void _;
+      }
     }
 
     function buildAnalysisPayload(payload) {
@@ -3901,10 +4008,6 @@
             ${photoHtml}
           </section>
           <section class="rec-block">
-            <h3>Run Metadata</h3>
-            <p class="rec-text">Prompt version: ${escapeHtml(state.lastAnalysisMeta?.promptVersion || "N/A")}\nModel: ${escapeHtml(state.lastAnalysisMeta?.model || "N/A")}\nLatency: ${escapeHtml(state.lastAnalysisMeta?.latencyMs ? `${state.lastAnalysisMeta.latencyMs}ms` : "N/A")}</p>
-          </section>
-          <section class="rec-block">
             <h3>B. Problem Understanding</h3>
             <p class="rec-text">${escapeHtml(r.problemUnderstanding)}</p>
           </section>
@@ -3984,10 +4087,6 @@
         "",
         r.runInfo || "",
         r.runNote || "",
-        `Prompt version: ${state.lastAnalysisMeta?.promptVersion || "N/A"}`,
-        `Model: ${state.lastAnalysisMeta?.model || "N/A"}`,
-        `Latency: ${state.lastAnalysisMeta?.latencyMs ? `${state.lastAnalysisMeta.latencyMs}ms` : "N/A"}`,
-        "",
         "A. Input Summary",
         ...r.summary,
         "",
@@ -4027,6 +4126,83 @@
         .replace(/[^a-zA-Z0-9-]+/g, "_")
         .replace(/^_+|_+$/g, "");
       return `${caseNumber}.pdf`;
+    }
+
+    function completedPdfFilename(item) {
+      const caseNumber = String(item?.caseNumber || "case")
+        .replace(/[^a-zA-Z0-9-]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+      return `${caseNumber}_completed.pdf`;
+    }
+
+    function sharePointStatusFolder(status) {
+      if (status === CASE_STATUS.VERIFIED_GOOD) return "Verified-Good";
+      if (status === CASE_STATUS.VERIFIED_CORRECTED) return "Verified-Corrected";
+      if (status === CASE_STATUS.VERIFIED_REJECTED) return "Verified-Rejected";
+      if (status === CASE_STATUS.ARCHIVED) return "Archived";
+      return "Pending";
+    }
+
+    function buildCompletedCaseStoragePlan(item, caseStatus) {
+      const categorySlug = item?.categorySlug || slugify(item?.category || "other");
+      const filename = completedPdfFilename(item);
+      const statusFolder = sharePointStatusFolder(caseStatus);
+      return {
+        pdfName: filename,
+        sqlFolderPath: `completed-case/${statusFolder.toLowerCase()}/${categorySlug}/${filename}`,
+        sharePointLibrary: "AISS",
+        sharePointRootFolder: state.appConfig?.sharePointRootFolder || "AISS",
+        sharePointFolderPath: `${state.appConfig?.sharePointRootFolder || "AISS"}/Completed/${statusFolder}/${categorySlug}/${filename}`,
+        generatedAt: nowStamp(),
+        uploadStatus: "pending"
+      };
+    }
+
+    function completedPdfLines(item) {
+      const payload = item?.casePayload || {};
+      const formData = payload.formData || {};
+      const recommendations = Array.isArray(item?.aiResponse?.recommendations) ? item.aiResponse.recommendations : [];
+      const assumptions = Array.isArray(item?.aiResponse?.assumptions) ? item.aiResponse.assumptions : [];
+      const nextChecks = Array.isArray(item?.aiResponse?.decisionGuidance) ? item.aiResponse.decisionGuidance : [];
+      return [
+        "AISS COMPLETED CASE REPORT",
+        "",
+        `Case number: ${item.caseNumber || "N/A"}`,
+        `Category: ${item.category || "N/A"}`,
+        `Final status: ${item.caseStatus || "N/A"}`,
+        `User rating: ${item.rating || "Unrated"}`,
+        `Created: ${item.createdAt || "N/A"}`,
+        `Reviewed: ${item.reviewedAt || item.updatedAt || "N/A"}`,
+        `Reviewer: ${item.reviewerName || "N/A"}`,
+        "",
+        "A. Case Details",
+        `User: ${payload.user || payload.userName || "N/A"}`,
+        `Industry: ${payload.industry || "N/A"}`,
+        `Application: ${formData.application || "N/A"}`,
+        `Description: ${formData.description || formData.problemDescription || "N/A"}`,
+        `Main issue: ${Array.isArray(formData.mainIssue) ? formData.mainIssue.join(", ") : (formData.mainIssue || "N/A")}`,
+        "",
+        "B. AI Recommendation",
+        ...recommendations.map((line, index) => `${index + 1}. ${line}`),
+        `Reason: ${item?.aiResponse?.reason || "N/A"}`,
+        "",
+        "C. User Notes to Expert",
+        `Needs-work note: ${item.feedbackText || "None"}`,
+        `Comment to Product Expert: ${item.userComment || "None"}`,
+        "",
+        "D. Expert Review",
+        `Expert decision: ${item.expertDecision || item.caseStatus || "N/A"}`,
+        `Expert rating: ${item.expertRating || "N/A"}`,
+        `Knowledge value: ${item.knowledgeValue || "N/A"}`,
+        `Corrected recommendation: ${item.correctedRecommendation || "N/A"}`,
+        `Expert comment: ${item.expertComment || "N/A"}`,
+        "",
+        "E. Assumptions / Uncertainty",
+        ...(assumptions.length ? assumptions.map((line) => `- ${line}`) : ["- None recorded"]),
+        "",
+        "F. What To Check Next",
+        ...(nextChecks.length ? nextChecks.map((line) => `- ${line}`) : ["- None recorded"])
+      ].filter((line, index, arr) => !(line === "" && arr[index - 1] === ""));
     }
 
     async function buildPdfItem() {
@@ -4176,6 +4352,112 @@
         created: nowStamp(),
         blob,
         url
+      };
+    }
+
+    async function buildCompletedPdfItem(item) {
+      if (!item || !window.jspdf || !window.jspdf.jsPDF) return null;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const lines = completedPdfLines(item);
+      const left = 38;
+      const width = doc.internal.pageSize.getWidth() - 76;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const pageBottom = pageHeight - 42;
+      const red = [179, 18, 23];
+      const dark = [32, 39, 53];
+      const muted = [95, 105, 122];
+      const border = [224, 229, 238];
+      let y = 38;
+
+      function drawPageHeader() {
+        doc.setFillColor(...red);
+        doc.rect(0, 0, pageWidth, 12, "F");
+        doc.setDrawColor(...border);
+        doc.line(left, pageHeight - 28, pageWidth - left, pageHeight - 28);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(...muted);
+        doc.text("AISS Completed Case", left, pageHeight - 15);
+      }
+
+      function ensureSpace(height = 24) {
+        if (y + height > pageBottom) {
+          doc.addPage();
+          drawPageHeader();
+          y = 42;
+        }
+      }
+
+      function addHeading(text) {
+        ensureSpace(30);
+        y += 5;
+        doc.setDrawColor(235, 238, 244);
+        doc.line(left, y - 9, pageWidth - left, y - 9);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(...red);
+        doc.text(text, left, y);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...dark);
+        y += 18;
+      }
+
+      function addWrappedText(text) {
+        const line = String(text || "");
+        if (!line.trim()) {
+          y += 7;
+          return;
+        }
+        const wrapped = doc.splitTextToSize(line, width);
+        ensureSpace(wrapped.length * 12.5 + 4);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...dark);
+        doc.text(wrapped, left, y);
+        y += wrapped.length * 12.5 + 1;
+      }
+
+      drawPageHeader();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(...dark);
+      doc.text(lines[0], left, y);
+      y += 18;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...muted);
+
+      const metaLines = lines.slice(2, 8);
+      doc.setFillColor(250, 251, 253);
+      doc.setDrawColor(...border);
+      doc.roundedRect(left, y, width, 78, 6, 6, "FD");
+      let metaY = y + 18;
+      metaLines.forEach((line) => {
+        doc.text(line, left + 12, metaY);
+        metaY += 13;
+      });
+      y += 94;
+
+      for (let i = 8; i < lines.length; i += 1) {
+        const line = lines[i] || "";
+        if (/^[A-F]\./.test(line)) {
+          addHeading(line);
+          continue;
+        }
+        addWrappedText(line);
+      }
+
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      return {
+        filename: completedPdfFilename(item),
+        created: nowStamp(),
+        blob,
+        url,
+        sharePointFolderPath: item?.casePayload?.completedCase?.sharePointFolderPath || ""
       };
     }
 
@@ -4540,6 +4822,11 @@
       }
     });
 
+    modelSelect?.addEventListener("change", () => {
+      state.selectedModel = String(modelSelect.value || "auto");
+      addActivity("Model Updated", `AI model preference set to ${state.selectedModel === "auto" ? "Auto" : state.selectedModel}.`);
+    });
+
     ["dragenter", "dragover"].forEach((evt) => {
       chatPanel.addEventListener(evt, (event) => {
         event.preventDefault();
@@ -4592,7 +4879,8 @@
       renderHistory();
       syncFeedbackUi();
       refreshOpsSummary();
-      refreshCaseReport();
+    loadAppConfig();
+    refreshCaseReport();
       const requestedCase = new URLSearchParams(window.location.search).get("case");
       if (requestedCase) {
         toggleCaseReportCard(true);
