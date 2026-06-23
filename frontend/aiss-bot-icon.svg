@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="AISS bot icon">
+  <rect x="6" y="6" width="116" height="116" rx="26" fill="#b31217"/>
+  <circle cx="64" cy="64" r="40" fill="#ffffff"/>
+  <circle cx="64" cy="64" r="38" fill="none" stroke="#111111" stroke-width="4"/>
+  <line x1="64" y1="30" x2="64" y2="44" stroke="#111111" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="64" cy="26" r="6" fill="#111111"/>
+  <rect x="42" y="46" width="44" height="32" rx="12" fill="#ffffff" stroke="#111111" stroke-width="4"/>
+  <rect x="34" y="54" width="8" height="16" rx="3" fill="#ffffff" stroke="#111111" stroke-width="4"/>
+  <rect x="86" y="54" width="8" height="16" rx="3" fill="#ffffff" stroke="#111111" stroke-width="4"/>
+  <circle cx="56" cy="62" r="4" fill="#111111"/>
+  <circle cx="72" cy="62" r="4" fill="#111111"/>
+</svg>
