@@ -1795,8 +1795,8 @@
             <div class="flow-steps">
               <div class="flow-step active" data-step="1" title="Category">📦</div>
               <div class="flow-step" data-step="2" title="Form + Upload">📝</div>
-              <div class="flow-step" data-step="3" title="Submit">✅</div>
-              <div class="flow-step" data-step="4" title="Review">⚙</div>
+              <div class="flow-step" data-step="3" title="Submit">�?/div>
+              <div class="flow-step" data-step="4" title="Review">�?/div>
               <div class="flow-step" data-step="5" title="Feedback">💬</div>
               <div class="flow-step" data-step="6" title="PDF / Share">📄</div>
             </div>
@@ -2069,7 +2069,7 @@
     const categories = {
       Coupling: {
         short: "coupling",
-        icon: "⚙️",
+        icon: "\u2699\uFE0F",
         brands: ["Regal Rexnord", "SKF", "Lovejoy", "DODGE", "KTR", "Martin", "NIS"],
         fields: [
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, compressor" },
@@ -2166,7 +2166,7 @@
       },
       Belt: {
         short: "belt",
-        icon: "🟫",
+        icon: "\u25AD",
         brands: ["Optibelt", "NIS", "Fenner Drives", "Habasit", "Bando"],
         fields: [
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, fan, blower" },
@@ -2190,7 +2190,7 @@
       },
       Chain: {
         short: "chain",
-        icon: "⛓️",
+        icon: "\u26D3\uFE0F",
         brands: ["DID", "Tsubak", "NIS", "SKF", "Sugiyama", "Tokuno", "SSM", "BSN", "Martin"],
         fields: [
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, packaging, lifting" },
@@ -2214,7 +2214,7 @@
       },
       Gearbox: {
         short: "gearbox",
-        icon: "🧰",
+        icon: "\u2699\uFE0F",
         brands: ["Motology", "Regal Rexnord", "NIS", "OCR"],
         fields: [
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, mixer, crusher" },
@@ -2239,7 +2239,7 @@
       },
       "Electric Motor": {
         short: "motor",
-        icon: "⚡",
+        icon: "\u26A1",
         brands: ["Motology", "Regal Rexnord", "NIS", "OCR"],
         fields: [
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. pump, fan, compressor" },
@@ -2266,7 +2266,7 @@
       },
       Other: {
         short: "other",
-        icon: "🧩",
+        icon: "\u25A6",
         brands: ["NIS", "Regal Rexnord"],
         fields: [
           { id: "description", label: "Product description", type: "textarea", placeholder: "Describe the product needed" },
@@ -2425,6 +2425,7 @@
       activeShareItem: null,
         history: [],
         completedPdfCache: {},
+        reviewCasePdfCache: {},
         expertAiAssistByCase: {},
         reanalysisRound: 0,
         lastContextHash: "",
@@ -2907,8 +2908,8 @@
               </div>
             </div>
             <div>
-              <label for="expertCommentArea">Expert comment</label>
-              <textarea id="expertCommentArea" placeholder="Explain the technical verification, concern, or decision reason.">${escapeHtml(item.expertComment || "")}</textarea>
+              <label for="expertCommentArea">Expert comment (optional)</label>
+              <textarea id="expertCommentArea" placeholder="Optional: explain the technical verification, concern, or decision reason.">${escapeHtml(item.expertComment || "")}</textarea>
             </div>
             <div>
               <label for="correctedRecommendationArea">Final recommendation (editable)</label>
@@ -2935,6 +2936,16 @@
               <button id="saveExpertReviewBtn" class="btn-primary" type="submit">Save Expert Review</button>
             </div>
           </form>
+        </div>
+        <div class="detail-card full">
+          <h4>Original User PDF Report</h4>
+          <div class="review-assist-meta">Reviewer can view the full original user report here, then generate, download, or share the same report PDF if needed.</div>
+          <div class="detail-text-block" id="originalUserPdfPreview">${escapeHtml(userPdfLinesFromCaseItem(item).join("\n"))}</div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button id="originalPdfBtn" class="btn-secondary" type="button">Generate Original PDF</button>
+            <button id="originalDownloadBtn" class="btn-secondary" type="button">Download Original PDF</button>
+            <button id="originalShareBtn" class="btn-primary" type="button">Share Original PDF</button>
+          </div>
         </div>
         <div class="detail-card full">
           <h4>Completed Case PDF</h4>
@@ -2978,6 +2989,40 @@
         if (!pdfItem) {
           showUserMessage("Generate the completed PDF first in this browser session.");
           return;
+        }
+        await sharePdf(pdfItem);
+      });
+      document.getElementById("originalPdfBtn")?.addEventListener("click", async () => {
+        const pdfItem = await buildSavedCasePdfItem(state.activeCaseDetail);
+        if (!pdfItem) {
+          showUserMessage("Original user PDF could not be generated right now.");
+          return;
+        }
+        state.reviewCasePdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
+        pushHistory(pdfItem);
+        addActivity("Original User PDF Generated", pdfItem.filename);
+      });
+      document.getElementById("originalDownloadBtn")?.addEventListener("click", async () => {
+        let pdfItem = state.reviewCasePdfCache[state.activeCaseDetail.caseNumber];
+        if (!pdfItem) {
+          pdfItem = await buildSavedCasePdfItem(state.activeCaseDetail);
+          if (!pdfItem) {
+            showUserMessage("Original user PDF could not be generated right now.");
+            return;
+          }
+          state.reviewCasePdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
+        }
+        downloadPdf(pdfItem);
+      });
+      document.getElementById("originalShareBtn")?.addEventListener("click", async () => {
+        let pdfItem = state.reviewCasePdfCache[state.activeCaseDetail.caseNumber];
+        if (!pdfItem) {
+          pdfItem = await buildSavedCasePdfItem(state.activeCaseDetail);
+          if (!pdfItem) {
+            showUserMessage("Original user PDF could not be generated right now.");
+            return;
+          }
+          state.reviewCasePdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
         }
         await sharePdf(pdfItem);
       });
@@ -3329,7 +3374,7 @@
             <span class="multi-select-label">Select main issue(s)</span>
             <span class="multi-select-count">You can tick more than one</span>
           </span>
-          <span class="multi-select-caret">▼</span>
+          <span class="multi-select-caret">&#9662;</span>
         `;
         el.appendChild(summary);
         const menu = document.createElement("div");
@@ -4434,9 +4479,7 @@
         `Case status: ${state.currentCaseStatus || CASE_STATUS.AI_GENERATED}`,
         `Case link: ${recallLink}`,
         "",
-        r.runInfo || "",
-        r.runNote || "",
-        "A. Input Summary",
+        "A. Case Details",
         ...r.summary,
         "",
         "B. Problem Understanding",
@@ -4455,19 +4498,133 @@
         "E. Reason",
         r.reason,
         "",
-        "F. User Review",
+        "F. Assumptions / Uncertainty",
+        ...r.assumptions.map((x) => `- ${x}`),
+        "",
+        "G. What to Check / Ask Next",
+        ...(r.decisionGuidance || []).map((x) => `- ${x}`),
+        "",
+        "H. User Notes to Expert",
         `User rating: ${state.feedbackRating || "Unrated"}`,
         `Needs-work note: ${state.feedbackComment || "None"}`,
         `Comment to Product Expert: ${state.userExpertComment || "None"}`,
         "",
-        "G. Assumptions / Uncertainty",
-        ...r.assumptions.map((x) => `- ${x}`),
-        "",
-        "H. What to Check / Ask Next",
-        ...(r.decisionGuidance || []).map((x) => `- ${x}`),
-        "",
         "All outputs require expert verification before customer sharing."
       ];
+    }
+
+    function savedAssetLabelLines(savedAssets = {}) {
+      const formPhotos = Array.isArray(savedAssets.formPhotos) ? savedAssets.formPhotos : [];
+      const chatAttachments = Array.isArray(savedAssets.chatAttachments) ? savedAssets.chatAttachments : [];
+      return [
+        ...formPhotos.map((asset) => `Form photo: ${asset.name || "attachment"} (${fileSizeText(asset.size || 0)})`),
+        ...chatAttachments.map((asset, index) => `Chat attachment ${asset.noteIndex || index + 1}: ${asset.name || "attachment"} (${asset.type || "unknown"}, ${fileSizeText(asset.size || 0)})`)
+      ];
+    }
+
+    function collectSavedPdfAssets(savedAssets = {}) {
+      const formPhotos = Array.isArray(savedAssets.formPhotos) ? savedAssets.formPhotos : [];
+      const chatAttachments = Array.isArray(savedAssets.chatAttachments) ? savedAssets.chatAttachments : [];
+      return [...formPhotos, ...chatAttachments].map((asset, index) => ({
+        label: asset.noteIndex
+          ? `Chat attachment ${asset.noteIndex}: ${asset.name || "attachment"} (${asset.type || "unknown"}, ${fileSizeText(asset.size || 0)})`
+          : `${index < formPhotos.length ? "Form photo" : "Attachment"}: ${asset.name || "attachment"} (${fileSizeText(asset.size || 0)})`,
+        dataUrl: asset.dataUrl || "",
+        type: asset.type || "unknown"
+      }));
+    }
+
+    async function collectLivePdfAssets() {
+      const assets = [];
+      for (const photo of state.formPhotos) {
+        let dataUrl = "";
+        try {
+          dataUrl = await fileToDataUrl(photo.file);
+        } catch (err) {
+          dataUrl = "";
+        }
+        assets.push({
+          label: `Form photo: ${photo.file.name} (${fileSizeText(photo.file.size)})`,
+          dataUrl,
+          type: photo.file.type || "unknown"
+        });
+      }
+      for (const [noteIndex, note] of state.chatNotes.entries()) {
+        for (const file of (note.files || [])) {
+          let dataUrl = "";
+          if (file.file && String(file.type || "").startsWith("image/")) {
+            try {
+              dataUrl = await fileToDataUrl(file.file);
+            } catch (err) {
+              dataUrl = "";
+            }
+          }
+          assets.push({
+            label: `Chat attachment ${noteIndex + 1}: ${file.name} (${file.type || "unknown"}, ${fileSizeText(file.size || 0)})`,
+            dataUrl,
+            type: file.type || "unknown"
+          });
+        }
+      }
+      return assets;
+    }
+
+    function userPdfLinesFromCaseItem(item) {
+      const payload = item?.casePayload || {};
+      const formData = payload.formData || {};
+      const recommendations = Array.isArray(item?.aiResponse?.recommendations) ? item.aiResponse.recommendations : [];
+      const assumptions = Array.isArray(item?.aiResponse?.assumptions) ? item.aiResponse.assumptions : [];
+      const nextChecks = Array.isArray(item?.aiResponse?.decisionGuidance) ? item.aiResponse.decisionGuidance : [];
+      const brands = Array.isArray(item?.aiResponse?.brands) ? item.aiResponse.brands : [];
+      const parts = Array.isArray(item?.aiResponse?.parts) ? item.aiResponse.parts : [];
+      const assetLines = savedAssetLabelLines(payload.savedAssets || {});
+      const recallLink = item?.caseNumber ? buildCaseLink(item.caseNumber) : "N/A";
+      return [
+        "AI SALES SUPPORT ANALYSIS AND RECOMMENDATION",
+        "",
+        `Case number: ${item?.caseNumber || "N/A"}`,
+        `User: ${payload.user || payload.userName || "N/A"}`,
+        `Industry: ${payload.industry || "N/A"}`,
+        `Product category: ${item?.category || payload.category || "N/A"}`,
+        `Case status: ${item?.caseStatus || CASE_STATUS.PENDING_EXPERT_REVIEW}`,
+        `Case link: ${recallLink}`,
+        "",
+        "A. Case Details",
+        `Application: ${formData.application || "N/A"}`,
+        `Main issue: ${Array.isArray(formData.mainIssue) ? formData.mainIssue.join(", ") : (formData.mainIssue || "N/A")}`,
+        `Customer problem / requirement: ${formData.problem || formData.description || formData.problemDescription || "N/A"}`,
+        `Existing brand / model: ${formData.existing || "N/A"}`,
+        "",
+        "B. Problem Understanding",
+        item?.aiResponse?.problemUnderstanding || "N/A",
+        "",
+        "C. Analysis and Recommendation",
+        ...(recommendations.length ? recommendations.map((line, index) => `${index + 1}. ${line}`) : ["No recommendation recorded."]),
+        "",
+        "D. Suggested Brand(s) & Part Number",
+        `Brand 1: ${brands[0] || "N/A"}`,
+        `Brand 2: ${brands[1] || "N/A"}`,
+        `- ${parts[0] || "N/A"}`,
+        `- ${parts[1] || "N/A"}`,
+        `Suggested by AI: ${item?.aiResponse?.suggestedByAI || "N/A"}`,
+        "",
+        "E. Reason",
+        item?.aiResponse?.reason || "N/A",
+        "",
+        "F. Assumptions / Uncertainty",
+        ...(assumptions.length ? assumptions.map((line) => `- ${line}`) : ["- None recorded"]),
+        "",
+        "G. What to Check / Ask Next",
+        ...(nextChecks.length ? nextChecks.map((line) => `- ${line}`) : ["- None recorded"]),
+        "",
+        ...(assetLines.length ? ["H. Photos and Attachments", ...assetLines, ""] : []),
+        assetLines.length ? "I. User Notes to Expert" : "H. User Notes to Expert",
+        `User rating: ${item?.rating || payload?.userReview?.rating || "Unrated"}`,
+        `Needs-work note: ${item?.feedbackText || payload?.userReview?.needsWorkNote || "None"}`,
+        `Comment to Product Expert: ${item?.userComment || payload?.userReview?.commentToExpert || "None"}`,
+        "",
+        "All outputs require expert verification before customer sharing."
+      ].filter((line, index, arr) => !(line === "" && arr[index - 1] === ""));
     }
 
     function pdfFilename() {
@@ -4511,8 +4668,11 @@
       const payload = item?.casePayload || {};
       const formData = payload.formData || {};
       const recommendations = Array.isArray(item?.aiResponse?.recommendations) ? item.aiResponse.recommendations : [];
+      const brands = Array.isArray(item?.aiResponse?.brands) ? item.aiResponse.brands : [];
+      const parts = Array.isArray(item?.aiResponse?.parts) ? item.aiResponse.parts : [];
       const assumptions = Array.isArray(item?.aiResponse?.assumptions) ? item.aiResponse.assumptions : [];
       const nextChecks = Array.isArray(item?.aiResponse?.decisionGuidance) ? item.aiResponse.decisionGuidance : [];
+      const assetLines = savedAssetLabelLines(payload.savedAssets || {});
       return [
         "AISS COMPLETED CASE REPORT",
         "",
@@ -4531,34 +4691,54 @@
         `Description: ${formData.description || formData.problemDescription || "N/A"}`,
         `Main issue: ${Array.isArray(formData.mainIssue) ? formData.mainIssue.join(", ") : (formData.mainIssue || "N/A")}`,
         "",
-        "B. AI Recommendation",
-        ...recommendations.map((line, index) => `${index + 1}. ${line}`),
-        `Reason: ${item?.aiResponse?.reason || "N/A"}`,
+        "B. Problem Understanding",
+        item?.aiResponse?.problemUnderstanding || "N/A",
         "",
-        "C. User Notes to Expert",
+        "C. AI Recommendation",
+        ...recommendations.map((line, index) => `${index + 1}. ${line}`),
+        "",
+        "D. Suggested Brand(s) & Part Number",
+        `Brand 1: ${brands[0] || "N/A"}`,
+        `Brand 2: ${brands[1] || "N/A"}`,
+        `- ${parts[0] || "N/A"}`,
+        `- ${parts[1] || "N/A"}`,
+        `Suggested by AI: ${item?.aiResponse?.suggestedByAI || "N/A"}`,
+        "",
+        "E. Reason",
+        item?.aiResponse?.reason || "N/A",
+        "",
+        "F. Assumptions / Uncertainty",
+        ...(assumptions.length ? assumptions.map((line) => `- ${line}`) : ["- None recorded"]),
+        "",
+        "G. What To Check Next",
+        ...(nextChecks.length ? nextChecks.map((line) => `- ${line}`) : ["- None recorded"]),
+        "",
+        ...(assetLines.length ? ["H. Photos and Attachments", ...assetLines, ""] : []),
+        assetLines.length ? "I. User Notes to Expert" : "H. User Notes to Expert",
         `Needs-work note: ${item.feedbackText || "None"}`,
         `Comment to Product Expert: ${item.userComment || "None"}`,
         "",
-        "D. Expert Review",
+        assetLines.length ? "J. Expert Review" : "I. Expert Review",
         `Expert decision: ${item.expertDecision || item.caseStatus || "N/A"}`,
         `Expert rating: ${item.expertRating || "N/A"}`,
         `Knowledge value: ${item.knowledgeValue || "N/A"}`,
         `Corrected recommendation: ${item.correctedRecommendation || "N/A"}`,
-        `Expert comment: ${item.expertComment || "N/A"}`,
-        "",
-        "E. Assumptions / Uncertainty",
-        ...(assumptions.length ? assumptions.map((line) => `- ${line}`) : ["- None recorded"]),
-        "",
-        "F. What To Check Next",
-        ...(nextChecks.length ? nextChecks.map((line) => `- ${line}`) : ["- None recorded"])
+        `Expert comment: ${item.expertComment || "None"}`,
+        ""
       ].filter((line, index, arr) => !(line === "" && arr[index - 1] === ""));
     }
 
-    async function buildPdfItem() {
-      if (!state.recommendation || !window.jspdf || !window.jspdf.jsPDF) return null;
+    async function renderPdfDocument({
+      title,
+      headerLabel,
+      metaLines = [],
+      lines = [],
+      imageAssets = [],
+      headingPattern = /^[A-Z]\./
+    } = {}) {
+      if (!window.jspdf || !window.jspdf.jsPDF) return null;
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: "pt", format: "a4" });
-      const lines = recLinesForPdf();
       const left = 38;
       const width = doc.internal.pageSize.getWidth() - 76;
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -4578,7 +4758,7 @@
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(...muted);
-        doc.text("AI Sales Support", left, pageHeight - 15);
+        doc.text(headerLabel, left, pageHeight - 15);
       }
 
       function ensureSpace(height = 24) {
@@ -4623,70 +4803,41 @@
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.setTextColor(...dark);
-      doc.text(lines[0], left, y);
+      doc.text(title, left, y);
       y += 18;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
       doc.setTextColor(...muted);
 
-      const metaLines = lines.slice(2, 6);
+      const cardHeight = Math.max(62, 18 + metaLines.length * 13 + 10);
       doc.setFillColor(250, 251, 253);
       doc.setDrawColor(...border);
-      doc.roundedRect(left, y, width, 62, 6, 6, "FD");
+      doc.roundedRect(left, y, width, cardHeight, 6, 6, "FD");
       let metaY = y + 18;
       metaLines.forEach((line) => {
-        doc.text(line, left + 12, metaY);
+        doc.text(String(line || ""), left + 12, metaY);
         metaY += 13;
       });
-      y += 78;
+      y += cardHeight + 16;
 
-      for (let i = 6; i < lines.length; i += 1) {
-        const line = lines[i] || "";
-        if (/^[A-G]\./.test(line)) {
+      lines.forEach((line) => {
+        if (headingPattern.test(String(line || ""))) {
           addHeading(line);
-          continue;
+          return;
         }
         addWrappedText(line);
-      }
+      });
 
-      const chatFiles = state.chatNotes.flatMap((note, noteIndex) =>
-        (note.files || []).map((file) => ({ ...file, noteIndex, time: note.time }))
-      );
-      if (state.formPhotos.length || chatFiles.length) {
-        y += 8;
-        addHeading("H. Uploaded Photo(s) / Attachment(s)");
-      }
-
-      for (const photo of state.formPhotos) {
-        addWrappedText(`Form photo: ${photo.file.name} (${fileSizeText(photo.file.size)})`);
-        try {
-          const dataUrl = await fileToDataUrl(photo.file);
-          const props = doc.getImageProperties(dataUrl);
-          const imgW = Math.min(width, 240);
-          const imgH = Math.min(180, (props.height / props.width) * imgW);
-          ensureSpace(imgH + 22);
-          doc.setDrawColor(...border);
-          doc.roundedRect(left - 3, y - 3, imgW + 6, imgH + 6, 4, 4, "S");
-          doc.addImage(dataUrl, undefined, left, y, imgW, imgH);
-          y += imgH + 18;
-        } catch (err) {
-          addWrappedText("Image preview could not be embedded in PDF.");
-        }
-      }
-
-      for (const item of chatFiles) {
-        const label = `Chat attachment ${item.noteIndex + 1}: ${item.name} (${item.type || "unknown"}, ${fileSizeText(item.size || 0)})`;
-        addWrappedText(label);
-        if (item.file && String(item.type || "").startsWith("image/")) {
+      for (const asset of imageAssets) {
+        if (asset.dataUrl && String(asset.type || "").startsWith("image/")) {
           try {
-            const dataUrl = await fileToDataUrl(item.file);
-            const props = doc.getImageProperties(dataUrl);
+            const props = doc.getImageProperties(asset.dataUrl);
             const imgW = Math.min(width, 240);
             const imgH = Math.min(180, (props.height / props.width) * imgW);
             ensureSpace(imgH + 22);
             doc.setDrawColor(...border);
             doc.roundedRect(left - 3, y - 3, imgW + 6, imgH + 6, 4, 4, "S");
-            doc.addImage(dataUrl, undefined, left, y, imgW, imgH);
+            doc.addImage(asset.dataUrl, undefined, left, y, imgW, imgH);
             y += imgH + 18;
           } catch (err) {
             addWrappedText("Image preview could not be embedded in PDF.");
@@ -4694,6 +4845,24 @@
         }
       }
 
+      return doc;
+    }
+
+    async function buildPdfItem() {
+      if (!state.recommendation) return null;
+      const doc = await renderPdfDocument({
+        title: "AI SALES SUPPORT ANALYSIS AND RECOMMENDATION",
+        headerLabel: "AI Sales Support",
+        metaLines: [
+          `Case number: ${state.submission?.caseNumber || state.caseNumber || "N/A"}`,
+          `User: ${state.submission?.user || state.userName || "N/A"}`,
+          `Industry: ${state.submission?.industry || state.industry || "NA"}`,
+          `Product category: ${state.category || "N/A"}`
+        ],
+        lines: recLinesForPdf().slice(9),
+        imageAssets: await collectLivePdfAssets()
+      });
+      if (!doc) return null;
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
       return {
@@ -4708,101 +4877,58 @@
       };
     }
 
-    async function buildCompletedPdfItem(item) {
-      if (!item || !window.jspdf || !window.jspdf.jsPDF) return null;
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: "pt", format: "a4" });
-      const lines = completedPdfLines(item);
-      const left = 38;
-      const width = doc.internal.pageSize.getWidth() - 76;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const pageBottom = pageHeight - 42;
-      const red = [179, 18, 23];
-      const dark = [32, 39, 53];
-      const muted = [95, 105, 122];
-      const border = [224, 229, 238];
-      let y = 38;
-
-      function drawPageHeader() {
-        doc.setFillColor(...red);
-        doc.rect(0, 0, pageWidth, 12, "F");
-        doc.setDrawColor(...border);
-        doc.line(left, pageHeight - 28, pageWidth - left, pageHeight - 28);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(...muted);
-        doc.text("AISS Completed Case", left, pageHeight - 15);
-      }
-
-      function ensureSpace(height = 24) {
-        if (y + height > pageBottom) {
-          doc.addPage();
-          drawPageHeader();
-          y = 42;
-        }
-      }
-
-      function addHeading(text) {
-        ensureSpace(30);
-        y += 5;
-        doc.setDrawColor(235, 238, 244);
-        doc.line(left, y - 9, pageWidth - left, y - 9);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
-        doc.setTextColor(...red);
-        doc.text(text, left, y);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(...dark);
-        y += 18;
-      }
-
-      function addWrappedText(text) {
-        const line = String(text || "");
-        if (!line.trim()) {
-          y += 7;
-          return;
-        }
-        const wrapped = doc.splitTextToSize(line, width);
-        ensureSpace(wrapped.length * 12.5 + 4);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(...dark);
-        doc.text(wrapped, left, y);
-        y += wrapped.length * 12.5 + 1;
-      }
-
-      drawPageHeader();
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor(...dark);
-      doc.text(lines[0], left, y);
-      y += 18;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(...muted);
-
-      const metaLines = lines.slice(2, 8);
-      doc.setFillColor(250, 251, 253);
-      doc.setDrawColor(...border);
-      doc.roundedRect(left, y, width, 78, 6, 6, "FD");
-      let metaY = y + 18;
-      metaLines.forEach((line) => {
-        doc.text(line, left + 12, metaY);
-        metaY += 13;
+    async function buildSavedCasePdfItem(item) {
+      if (!item) return null;
+      const payload = item.casePayload || {};
+      const doc = await renderPdfDocument({
+        title: "AI SALES SUPPORT ANALYSIS AND RECOMMENDATION",
+        headerLabel: "AI Sales Support",
+        metaLines: [
+          `Case number: ${item.caseNumber || "N/A"}`,
+          `User: ${payload.user || payload.userName || "N/A"}`,
+          `Industry: ${payload.industry || "N/A"}`,
+          `Product category: ${item.category || payload.category || "N/A"}`,
+          `Case status: ${item.caseStatus || CASE_STATUS.PENDING_EXPERT_REVIEW}`,
+          `Case link: ${item.caseNumber ? buildCaseLink(item.caseNumber) : "N/A"}`
+        ],
+        lines: userPdfLinesFromCaseItem(item).slice(9),
+        imageAssets: collectSavedPdfAssets(payload.savedAssets || {})
       });
-      y += 94;
+      if (!doc) return null;
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const safeCase = String(item?.caseNumber || "case").replace(/[^a-zA-Z0-9-]+/g, "_").replace(/^_+|_+$/g, "");
+      return {
+        kind: "analysis",
+        caseNumber: item?.caseNumber || "N/A",
+        user: payload.user || payload.userName || "N/A",
+        category: item?.category || payload.category || "N/A",
+        filename: `${safeCase}_user.pdf`,
+        created: nowStamp(),
+        blob,
+        url
+      };
+    }
 
-      for (let i = 8; i < lines.length; i += 1) {
-        const line = lines[i] || "";
-        if (/^[A-F]\./.test(line)) {
-          addHeading(line);
-          continue;
-        }
-        addWrappedText(line);
-      }
-
+    async function buildCompletedPdfItem(item) {
+      if (!item) return null;
+      const payload = item.casePayload || {};
+      const doc = await renderPdfDocument({
+        title: "AISS COMPLETED CASE REPORT",
+        headerLabel: "AISS Completed Case",
+        metaLines: [
+          `Case number: ${item.caseNumber || "N/A"}`,
+          `Category: ${item.category || "N/A"}`,
+          `Final status: ${item.caseStatus || "N/A"}`,
+          `User rating: ${item.rating || "Unrated"}`,
+          `Created: ${item.createdAt || "N/A"}`,
+          `Reviewed: ${item.reviewedAt || item.updatedAt || "N/A"}`,
+          `Reviewer: ${item.reviewerName || "N/A"}`
+        ],
+        lines: completedPdfLines(item).slice(10),
+        imageAssets: collectSavedPdfAssets(payload.savedAssets || {})
+      });
+      if (!doc) return null;
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
       return {
