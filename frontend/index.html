@@ -2856,15 +2856,16 @@
         </div>
         <div class="detail-card full">
           <h4>AI Evaluation</h4>
-          <div class="detail-list">
-            <div><strong>Suggested brands:</strong> ${escapeHtml(aiBrands || "Not recorded")}</div>
-            <div><strong>Suggested parts:</strong> ${escapeHtml(aiParts || "Not recorded")}</div>
-            <div><strong>Suggested by AI:</strong></div>
-            <div class="detail-text-block">${escapeHtml(item?.aiResponse?.suggestedByAI || "Not recorded")}</div>
-            <div><strong>Problem understanding:</strong></div>
-            <div class="detail-text-block">${escapeHtml(item?.aiResponse?.problemUnderstanding || "Not recorded")}</div>
-            <div><strong>Recommendation:</strong></div>
-            <div class="detail-text-block">${escapeHtml((item?.aiResponse?.recommendations || []).join("\n") || "Not recorded")}</div>
+          <div class="review-assist-meta">Display only. This mirrors the full original user report so the reviewer can inspect the whole case narrative without editing it here.</div>
+          <div class="detail-text-block">${escapeHtml(userPdfLinesFromCaseItem(item).join("\n"))}</div>
+        </div>
+        <div class="detail-card full">
+          <h4>Original User PDF Actions</h4>
+          <div class="review-assist-meta">Generate, download, or share the original user report PDF if you need to send the untouched report externally.</div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button id="originalPdfBtn" class="btn-secondary" type="button">Generate Original PDF</button>
+            <button id="originalDownloadBtn" class="btn-secondary" type="button">Download Original PDF</button>
+            <button id="originalShareBtn" class="btn-primary" type="button">Share Original PDF</button>
           </div>
         </div>
         <div class="detail-card full">
@@ -2938,16 +2939,6 @@
           </form>
         </div>
         <div class="detail-card full">
-          <h4>Original User PDF Report</h4>
-          <div class="review-assist-meta">Reviewer can view the full original user report here, then generate, download, or share the same report PDF if needed.</div>
-          <div class="detail-text-block" id="originalUserPdfPreview">${escapeHtml(userPdfLinesFromCaseItem(item).join("\n"))}</div>
-          <div class="btn-row" style="margin-top:12px;">
-            <button id="originalPdfBtn" class="btn-secondary" type="button">Generate Original PDF</button>
-            <button id="originalDownloadBtn" class="btn-secondary" type="button">Download Original PDF</button>
-            <button id="originalShareBtn" class="btn-primary" type="button">Share Original PDF</button>
-          </div>
-        </div>
-        <div class="detail-card full">
           <h4>Completed Case PDF</h4>
           <div class="detail-list">
             <div><strong>SQL folder path:</strong> ${escapeHtml(completedCase?.sqlFolderPath || "Will be created after expert review save")}</div>
@@ -2987,8 +2978,12 @@
       document.getElementById("completedShareBtn")?.addEventListener("click", async () => {
         let pdfItem = state.completedPdfCache[state.activeCaseDetail.caseNumber];
         if (!pdfItem) {
-          showUserMessage("Generate the completed PDF first in this browser session.");
-          return;
+          pdfItem = await buildCompletedPdfItem(state.activeCaseDetail);
+          if (!pdfItem) {
+            showUserMessage("Completed case PDF could not be generated right now.");
+            return;
+          }
+          state.completedPdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
         }
         await sharePdf(pdfItem);
       });
@@ -4989,6 +4984,7 @@
       openEmailShare(item);
       addActivity("Share Fallback Used", "Opened email client and downloaded the PDF for manual attachment.");
       addChatBubble("External share sheet is not available in this browser, so I opened your email app and downloaded the PDF for attachment.", "ai");
+      showUserMessage("External share sheet is not available here. The PDF was downloaded and your email app was opened for manual attachment.");
     }
 
     async function sharePdf(item) {
@@ -5004,6 +5000,9 @@
         if (canSharePdfFile(item)) {
           const file = new File([item.blob], item.filename, { type: "application/pdf" });
           shareData.files = [file];
+        } else {
+          fallbackExternalShare(item);
+          return;
         }
         await navigator.share(shareData);
         addActivity("PDF Shared", item.filename);
@@ -5027,8 +5026,8 @@
     }
 
     function openEmailShare(item) {
-      const caseNumber = state.submission?.caseNumber || state.caseNumber || "N/A";
-      const user = state.submission?.user || state.userName || "N/A";
+      const caseNumber = item?.caseNumber || state.submission?.caseNumber || state.caseNumber || "N/A";
+      const user = item?.user || state.submission?.user || state.userName || "N/A";
       const subject = `AI Sales Support recommendation - ${caseNumber} - ${user}`;
       const body = shareTextFor(item);
       window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
