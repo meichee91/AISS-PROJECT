@@ -2447,7 +2447,9 @@
         activeCaseDetail: null,
         appConfig: {
           allowedModels: ["auto", "gpt-5.4-mini", "gpt-5.4"],
-          sharePointRootFolder: "AISS"
+          sharePointRootFolder: "AISS",
+          sharePointLibrary: "AISS",
+          sharePointUploadEnabled: false
         }
       };
 
@@ -2975,8 +2977,10 @@
           <h4>Completed Case PDF</h4>
           <div class="detail-list">
             <div><strong>SQL folder path:</strong> ${escapeHtml(completedCase?.sqlFolderPath || "Will be created after expert review save")}</div>
+            <div><strong>SharePoint library:</strong> ${escapeHtml(completedCase?.sharePointLibrary || state.appConfig?.sharePointLibrary || "AISS")}</div>
             <div><strong>SharePoint path:</strong> ${escapeHtml(completedCase?.sharePointFolderPath || "Pending SharePoint connection/upload")}</div>
             <div><strong>Upload status:</strong> ${escapeHtml(completedCase?.uploadStatus || "pending")}</div>
+            <div><strong>SharePoint file URL:</strong> ${completedCase?.sharePointFileUrl ? `<a href="${escapeHtml(completedCase.sharePointFileUrl)}" target="_blank" rel="noreferrer">Open file</a>` : "Pending upload"}</div>
           </div>
           <div class="review-assist-meta" style="margin-top:12px;">Live preview of what the reviewer has amended so far. This updates when the reviewer edits the final recommendation, adds comment, changes reviewer name, or applies an AI draft.</div>
           <div class="detail-text-block" id="reviewerAmendmentPreview">${escapeHtml(buildReviewerAmendmentPreviewText(item))}</div>
@@ -2999,6 +3003,20 @@
         state.completedPdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
         pushHistory(pdfItem);
         addActivity("Completed PDF Generated", pdfItem.filename);
+        if (state.appConfig?.sharePointUploadEnabled) {
+          try {
+            const uploadResult = await uploadCompletedPdfToSharePoint(state.activeCaseDetail, pdfItem);
+            if (uploadResult?.item) {
+              state.activeCaseDetail = uploadResult.item;
+              showCaseDetail(state.activeCaseDetail);
+            }
+            showUserMessage(uploadResult?.sharePointFileUrl
+              ? "Completed PDF uploaded to SharePoint successfully."
+              : "Completed PDF generated.");
+          } catch (err) {
+            showUserMessage(err?.message || "Completed PDF was generated, but SharePoint upload failed.");
+          }
+        }
         document.getElementById("completedDownloadBtn")?.removeAttribute("disabled");
         document.getElementById("completedShareBtn")?.removeAttribute("disabled");
       });
@@ -3019,6 +3037,17 @@
             return;
           }
           state.completedPdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
+        }
+        if (state.appConfig?.sharePointUploadEnabled && state.activeCaseDetail?.casePayload?.completedCase?.uploadStatus !== "uploaded") {
+          try {
+            const uploadResult = await uploadCompletedPdfToSharePoint(state.activeCaseDetail, pdfItem);
+            if (uploadResult?.item) {
+              state.activeCaseDetail = uploadResult.item;
+              showCaseDetail(state.activeCaseDetail);
+            }
+          } catch (err) {
+            showUserMessage(err?.message || "SharePoint upload failed. Continuing with external share.");
+          }
         }
         await sharePdf(pdfItem);
       });
@@ -3861,6 +3890,8 @@
           ? data.allowedModels
           : state.appConfig.allowedModels;
         state.appConfig.sharePointRootFolder = data.sharePointRootFolder || state.appConfig.sharePointRootFolder;
+        state.appConfig.sharePointLibrary = data.sharePointLibrary || state.appConfig.sharePointLibrary;
+        state.appConfig.sharePointUploadEnabled = !!data.sharePointUploadEnabled;
         if (modelSelect) {
           const options = [
             { value: "auto", label: "Auto" },
@@ -4658,7 +4689,7 @@
       return {
         pdfName: filename,
         sqlFolderPath: `completed-case/${statusFolder.toLowerCase()}/${categorySlug}/${filename}`,
-        sharePointLibrary: "AISS",
+        sharePointLibrary: state.appConfig?.sharePointLibrary || "AISS",
         sharePointRootFolder: state.appConfig?.sharePointRootFolder || "AISS",
         sharePointFolderPath: `${state.appConfig?.sharePointRootFolder || "AISS"}/Completed/${statusFolder}/${categorySlug}/${filename}`,
         generatedAt: nowStamp(),
@@ -4953,6 +4984,47 @@
       a.download = item.filename;
       a.click();
       addActivity("PDF Downloaded", item.filename);
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          resolve(result.includes(",") ? result.split(",")[1] : result);
+        };
+        reader.onerror = () => reject(reader.error || new Error("Unable to read PDF for SharePoint upload."));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function uploadCompletedPdfToSharePoint(caseItem, pdfItem) {
+      if (!state.appConfig?.sharePointUploadEnabled || !caseItem?.caseNumber || !pdfItem?.blob) {
+        return null;
+      }
+      const completedCase = caseItem?.casePayload?.completedCase;
+      if (!completedCase?.sharePointFolderPath) {
+        return null;
+      }
+      const dataBase64 = await blobToBase64(pdfItem.blob);
+      const response = await fetch(`/api/cases/${encodeURIComponent(caseItem.caseNumber)}/completed-pdf-upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: pdfItem.filename,
+          contentType: "application/pdf",
+          dataBase64,
+          sharePointFolderPath: completedCase.sharePointFolderPath
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.uploaded) {
+        throw new Error(data?.error || "Unable to upload completed PDF to SharePoint.");
+      }
+      if (data.item) {
+        state.activeCaseDetail = data.item;
+      }
+      return data;
     }
 
     function canSharePdfFile(item) {

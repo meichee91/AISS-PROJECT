@@ -32,6 +32,12 @@ const azureSqlRequestTimeoutMs = Math.max(15000, Number(process.env.AZURE_SQL_RE
 const azureSqlWakeRetryCount = Math.max(1, Number(process.env.AZURE_SQL_WAKE_RETRY_COUNT || 3));
 const azureSqlWakeRetryDelayMs = Math.max(1000, Number(process.env.AZURE_SQL_WAKE_RETRY_DELAY_MS || 12000));
 const sharePointRootFolder = String(process.env.SHAREPOINT_ROOT_FOLDER || "AISS").trim() || "AISS";
+const sharePointTenantId = String(process.env.SHAREPOINT_TENANT_ID || "").trim();
+const sharePointClientId = String(process.env.SHAREPOINT_CLIENT_ID || "").trim();
+const sharePointClientSecret = String(process.env.SHAREPOINT_CLIENT_SECRET || "").trim();
+const sharePointSiteId = String(process.env.SHAREPOINT_SITE_ID || "").trim();
+const sharePointDriveId = String(process.env.SHAREPOINT_DRIVE_ID || "").trim();
+const sharePointLibraryName = String(process.env.SHAREPOINT_LIBRARY_NAME || "AISS").trim() || "AISS";
 const catalogSyncIntervalMinutes = Math.max(5, Number(process.env.CATALOG_SYNC_INTERVAL_MINUTES || 4320));
 const catalogSyncEnabled = String(process.env.CATALOG_SYNC_ENABLED || "true").toLowerCase() !== "false";
 const catalogSyncMaxPages = Math.max(0, Number(process.env.CATALOG_SYNC_MAX_PAGES_PER_CATEGORY || 0));
@@ -42,6 +48,10 @@ const localAppEventLogs = [];
 const localEvalCases = [];
 const MAX_LOCAL_LOGS = 150;
 let azureSqlPoolPromise = null;
+let sharePointTokenCache = {
+  accessToken: "",
+  expiresAt: 0
+};
 const CASE_STATUS = {
   DRAFT: "Draft",
   AI_GENERATED: "AI Generated",
@@ -102,6 +112,10 @@ function hasAzureSql() {
   return !!azureSqlServer && !!azureSqlDatabase && !!azureSqlUser && !!azureSqlPassword;
 }
 
+function hasSharePointUpload() {
+  return !!sharePointTenantId && !!sharePointClientId && !!sharePointClientSecret && !!sharePointSiteId && !!sharePointDriveId;
+}
+
 function getStorageMode() {
   if (hasAzureSql()) return "azure-sql";
   return "local";
@@ -140,6 +154,10 @@ function cleanLargeText(value, max = 6000) {
   return String(value || "").replace(/\r\n/g, "\n").trim().slice(0, max);
 }
 
+function cleanPathText(value, max = 500) {
+  return String(value || "").replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "").trim().slice(0, max);
+}
+
 function logApiError(route, err, extra = {}) {
   const detail = {
     route,
@@ -147,6 +165,114 @@ function logApiError(route, err, extra = {}) {
     ...extra
   };
   console.error(`[api-error] ${JSON.stringify(detail)}`);
+}
+
+async function getSharePointAccessToken() {
+  if (!hasSharePointUpload()) {
+    throw new Error("SharePoint upload is not configured.");
+  }
+  const now = Date.now();
+  if (sharePointTokenCache.accessToken && sharePointTokenCache.expiresAt - 60_000 > now) {
+    return sharePointTokenCache.accessToken;
+  }
+  const tokenUrl = `https://login.microsoftonline.com/${encodeURIComponent(sharePointTenantId)}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    client_id: sharePointClientId,
+    client_secret: sharePointClientSecret,
+    scope: "https://graph.microsoft.com/.default",
+    grant_type: "client_credentials"
+  });
+  const response = await fetch(tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) {
+    throw new Error(data.error_description || data.error?.message || "Unable to authenticate to SharePoint.");
+  }
+  sharePointTokenCache = {
+    accessToken: data.access_token,
+    expiresAt: now + Math.max(60, Number(data.expires_in || 3600)) * 1000
+  };
+  return sharePointTokenCache.accessToken;
+}
+
+async function sharePointGraphFetch(relativeUrl, options = {}) {
+  const token = await getSharePointAccessToken();
+  const response = await fetch(`https://graph.microsoft.com/v1.0${relativeUrl}`, {
+    method: options.method || "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {})
+    },
+    body: options.body
+  });
+  if (response.status === 204) return null;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error?.message || `SharePoint request failed (${response.status}).`);
+  }
+  return data;
+}
+
+async function ensureSharePointFolderPath(folderPath) {
+  const normalized = cleanPathText(folderPath, 500);
+  if (!normalized) return;
+  const segments = normalized.split("/").filter(Boolean);
+  let currentPath = "";
+  for (const segment of segments) {
+    const parentPath = currentPath;
+    currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+    try {
+      await sharePointGraphFetch(
+        `/sites/${encodeURIComponent(sharePointSiteId)}/drives/${encodeURIComponent(sharePointDriveId)}/root:/${encodeURIComponent(currentPath)}`,
+        { method: "GET" }
+      );
+    } catch (err) {
+      await sharePointGraphFetch(
+        parentPath
+          ? `/sites/${encodeURIComponent(sharePointSiteId)}/drives/${encodeURIComponent(sharePointDriveId)}/root:/${encodeURIComponent(parentPath)}:/children`
+          : `/sites/${encodeURIComponent(sharePointSiteId)}/drives/${encodeURIComponent(sharePointDriveId)}/root/children`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: segment,
+            folder: {},
+            "@microsoft.graph.conflictBehavior": "replace"
+          })
+        }
+      );
+    }
+  }
+}
+
+async function uploadBufferToSharePoint({ uploadPath, contentType, buffer }) {
+  const normalizedPath = cleanPathText(uploadPath, 500);
+  if (!normalizedPath) {
+    throw new Error("SharePoint upload path is missing.");
+  }
+  const lastSlash = normalizedPath.lastIndexOf("/");
+  const folderPath = lastSlash >= 0 ? normalizedPath.slice(0, lastSlash) : "";
+  if (folderPath) {
+    await ensureSharePointFolderPath(folderPath);
+  }
+  const item = await sharePointGraphFetch(
+    `/sites/${encodeURIComponent(sharePointSiteId)}/drives/${encodeURIComponent(sharePointDriveId)}/root:/${encodeURIComponent(normalizedPath)}:/content`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": contentType || "application/pdf"
+      },
+      body: buffer
+    }
+  );
+  return {
+    id: item?.id || "",
+    webUrl: item?.webUrl || "",
+    uploadPath: normalizedPath
+  };
 }
 
 function caseRecordColumns() {
@@ -714,6 +840,31 @@ async function azureUpdateExpertReview(caseNumber, payload) {
   return azureFindHistoricalCase(caseNumber);
 }
 
+async function azureUpdateCompletedCaseMeta(caseNumber, completedCase = {}) {
+  const currentCase = await azureFindHistoricalCase(caseNumber);
+  if (!currentCase) {
+    throw new Error("Case not found.");
+  }
+  const nextCasePayload = {
+    ...(currentCase.casePayload || {}),
+    completedCase: {
+      ...((currentCase.casePayload || {}).completedCase || {}),
+      ...(completedCase || {})
+    }
+  };
+  await azureQuery(`
+    UPDATE ${currentCase.sourceTable}
+    SET
+      case_payload = @casePayload,
+      updated_at = SYSUTCDATETIME()
+    WHERE case_number = @caseNumber;
+  `, (request) => {
+    request.input("caseNumber", sql.NVarChar(120), caseNumber);
+    request.input("casePayload", sql.NVarChar(sql.MAX), jsonText(nextCasePayload, "{}"));
+  });
+  return azureFindHistoricalCase(caseNumber);
+}
+
 const db = {
   mode: () => getStorageMode(),
   hasStructuredStorage: () => getStorageMode() !== "local",
@@ -748,6 +899,10 @@ const db = {
   },
   updateExpertReview: async (caseNumber, payload) => {
     if (hasAzureSql()) return azureUpdateExpertReview(caseNumber, payload);
+    return null;
+  },
+  updateCompletedCaseMeta: async (caseNumber, completedCase) => {
+    if (hasAzureSql()) return azureUpdateCompletedCaseMeta(caseNumber, completedCase);
     return null;
   }
 };
@@ -1267,10 +1422,63 @@ app.post("/api/cases/:caseNumber/expert-review", async (req, res) => {
   }
 });
 
+app.post("/api/cases/:caseNumber/completed-pdf-upload", async (req, res) => {
+  try {
+    if (!hasAzureSql()) {
+      return res.status(400).json({ error: "Structured storage is not configured." });
+    }
+    if (!hasSharePointUpload()) {
+      return res.status(400).json({ error: "SharePoint upload is not configured yet." });
+    }
+    const caseNumber = cleanText(req.params.caseNumber || "", 120);
+    const body = req.body || {};
+    const currentCase = await db.findHistoricalCase(caseNumber);
+    if (!currentCase) {
+      return res.status(404).json({ error: "Case not found." });
+    }
+    const existingCompletedCase = currentCase.casePayload?.completedCase || {};
+    const filename = cleanText(body.filename || existingCompletedCase.pdfName || "", 255);
+    const uploadPath = cleanPathText(body.sharePointFolderPath || existingCompletedCase.sharePointFolderPath || "", 500);
+    const base64Data = String(body.dataBase64 || "").replace(/^data:application\/pdf;base64,/i, "").trim();
+    if (!filename || !uploadPath || !base64Data) {
+      return res.status(400).json({ error: "Completed PDF upload data is incomplete." });
+    }
+    const buffer = Buffer.from(base64Data, "base64");
+    const uploaded = await uploadBufferToSharePoint({
+      uploadPath,
+      contentType: cleanText(body.contentType || "application/pdf", 80),
+      buffer
+    });
+    const item = await db.updateCompletedCaseMeta(caseNumber, {
+      ...existingCompletedCase,
+      pdfName: filename,
+      sharePointLibrary: existingCompletedCase.sharePointLibrary || sharePointLibraryName,
+      sharePointRootFolder: existingCompletedCase.sharePointRootFolder || sharePointRootFolder,
+      sharePointFolderPath: uploaded.uploadPath,
+      sharePointFileUrl: uploaded.webUrl,
+      sharePointItemId: uploaded.id,
+      uploadStatus: "uploaded",
+      uploadedAt: new Date().toISOString()
+    });
+    return res.json({
+      uploaded: true,
+      item,
+      sharePointFileUrl: uploaded.webUrl
+    });
+  } catch (err) {
+    logApiError("/api/cases/:caseNumber/completed-pdf-upload", err, {
+      caseNumber: req.params.caseNumber || ""
+    });
+    return res.status(500).json({ error: err.message || "Unable to upload completed PDF to SharePoint." });
+  }
+});
+
 app.get("/api/app-config", async (_req, res) => {
   return res.json({
     allowedModels: ALLOWED_GPT_MODELS,
-    sharePointRootFolder
+    sharePointRootFolder,
+    sharePointLibrary: sharePointLibraryName,
+    sharePointUploadEnabled: hasSharePointUpload()
   });
 });
 
