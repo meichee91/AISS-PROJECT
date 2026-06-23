@@ -3376,6 +3376,20 @@
       return el;
     }
 
+    function categoryHintMarkup(categoryName) {
+      const safeIconMap = {
+        Coupling: "&#9881;",
+        Bearings: "&#9881;",
+        Belt: "&#129523;",
+        Chain: "&#9939;",
+        Gearbox: "&#9881;",
+        "Electric Motor": "&#9889;",
+        Other: "&#129513;"
+      };
+      const icon = safeIconMap[categoryName] || "";
+      return icon ? `${icon} ${escapeHtml(categoryName)} form loaded.` : `${escapeHtml(categoryName)} form loaded.`;
+    }
+
     function applyDynamicFieldOptions(categoryName) {
       const cat = categories[categoryName];
       if (!cat) return;
@@ -3424,7 +3438,7 @@
         return;
       }
       const cat = categories[categoryName];
-      categoryHint.textContent = `${cat.icon} ${categoryName} form loaded.`;
+      categoryHint.innerHTML = categoryHintMarkup(categoryName);
 
       cat.fields.forEach((field) => {
         if (field.section) {
