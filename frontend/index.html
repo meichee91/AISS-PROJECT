@@ -1186,16 +1186,15 @@
     }
 
     .thinking-gears {
-      width: 84px;
-      height: 62px;
+      width: 120px;
+      height: 120px;
       position: relative;
       flex: 0 0 auto;
     }
 
     .gear-wheel {
       position: absolute;
-      color: #e6e6e8;
-      filter: drop-shadow(8px 6px 0 #a5a8ae);
+      filter: drop-shadow(0 10px 14px rgba(32, 39, 53, 0.18));
     }
 
     .gear-wheel svg {
@@ -1204,20 +1203,64 @@
       display: block;
     }
 
-    .gear-wheel.big {
-      width: 54px;
-      height: 54px;
-      right: 2px;
-      bottom: 0;
+    .gear-wheel::after {
+      content: "";
+      position: absolute;
+      inset: 22%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffffff 0 38%, #d7d7d9 39% 56%, #6c7078 57% 68%, #f6f6f7 69% 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65);
+    }
+
+    .gear-wheel svg .gear-core {
+      fill: currentColor;
+    }
+
+    .gear-wheel.blue {
+      color: #2f8fe7;
+    }
+
+    .gear-wheel.steel {
+      color: #8f939a;
+    }
+
+    .gear-wheel.silver {
+      color: #a7aab0;
+    }
+
+    .gear-wheel.top-left {
+      width: 58px;
+      height: 58px;
+      left: 8px;
+      top: 2px;
+      animation: gear-spin-reverse 1.4s linear infinite;
+    }
+
+    .gear-wheel.right-large {
+      width: 72px;
+      height: 72px;
+      right: 4px;
+      top: 20px;
+      animation: gear-spin 1.9s linear infinite;
+    }
+
+    .gear-wheel.bottom-left {
+      width: 58px;
+      height: 58px;
+      left: 20px;
+      bottom: 4px;
       animation: gear-spin 1.6s linear infinite;
     }
 
-    .gear-wheel.small {
-      width: 34px;
-      height: 34px;
-      left: 4px;
-      top: 5px;
-      animation: gear-spin-reverse 1.25s linear infinite;
+    .thinking-shadow {
+      position: absolute;
+      left: 12px;
+      right: 8px;
+      bottom: 0;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(60, 68, 84, 0.28), rgba(60, 68, 84, 0) 72%);
+      transform: translateY(3px);
     }
 
     .thinking-title {
@@ -3889,18 +3932,22 @@
       recContent.innerHTML = `
         <div class="thinking-card">
           <div class="thinking-gears" aria-hidden="true">
-            <div class="gear-wheel small">
-              <svg viewBox="0 0 38 38" fill="none">
-                <path d="M16.9 1.7a1.9 1.9 0 0 1 3.8 0l.3 2.4a12.3 12.3 0 0 1 2.9 1.2l2-1.4a1.9 1.9 0 0 1 2.7.5l1.9 3.3a1.9 1.9 0 0 1-.7 2.6l-2.1 1.2c.1.6.2 1.3.3 1.9l2.4.6a1.9 1.9 0 0 1 1.4 1.8v3.8a1.9 1.9 0 0 1-1.4 1.8l-2.4.6a12.2 12.2 0 0 1-.3 1.9l2.1 1.2a1.9 1.9 0 0 1 .7 2.6l-1.9 3.3a1.9 1.9 0 0 1-2.7.5l-2-1.4a12.3 12.3 0 0 1-2.9 1.2l-.3 2.4a1.9 1.9 0 0 1-3.8 0l-.3-2.4a12.3 12.3 0 0 1-2.9-1.2l-2 1.4a1.9 1.9 0 0 1-2.7-.5l-1.9-3.3a1.9 1.9 0 0 1 .7-2.6l2.1-1.2a12.2 12.2 0 0 1-.3-1.9l-2.4-.6A1.9 1.9 0 0 1 3 19.6v-3.8A1.9 1.9 0 0 1 4.4 14l2.4-.6c0-.6.1-1.3.3-1.9l-2.1-1.2a1.9 1.9 0 0 1-.7-2.6l1.9-3.3a1.9 1.9 0 0 1 2.7-.5l2 1.4A12.3 12.3 0 0 1 14 4.1l.3-2.4Z" fill="currentColor"/>
-                <circle cx="18.8" cy="17.7" r="7.1" fill="#ffffff"/>
-              </svg>
-            </div>
-            <div class="gear-wheel big">
+            <div class="gear-wheel blue top-left">
               <svg viewBox="0 0 42 42" fill="none">
-                <path d="M18.5 1.8a2.1 2.1 0 0 1 4.2 0l.32 2.68a13.6 13.6 0 0 1 3.28 1.36l2.28-1.56a2.1 2.1 0 0 1 2.98.56l2.1 3.64a2.1 2.1 0 0 1-.75 2.9l-2.34 1.35c.16.68.24 1.4.29 2.14l2.66.66a2.1 2.1 0 0 1 1.58 2.03v4.22a2.1 2.1 0 0 1-1.58 2.03l-2.66.66c-.05.74-.13 1.46-.29 2.14l2.34 1.35a2.1 2.1 0 0 1 .75 2.9l-2.1 3.64a2.1 2.1 0 0 1-2.98.56l-2.28-1.56a13.6 13.6 0 0 1-3.28 1.36l-.32 2.68a2.1 2.1 0 0 1-4.2 0l-.32-2.68a13.6 13.6 0 0 1-3.28-1.36l-2.28 1.56a2.1 2.1 0 0 1-2.98-.56l-2.1-3.64a2.1 2.1 0 0 1 .75-2.9l2.34-1.35a13.3 13.3 0 0 1-.29-2.14l-2.66-.66A2.1 2.1 0 0 1 2.4 22.8v-4.22a2.1 2.1 0 0 1 1.58-2.03l2.66-.66c.05-.74.13-1.46.29-2.14l-2.34-1.35a2.1 2.1 0 0 1-.75-2.9l2.1-3.64a2.1 2.1 0 0 1 2.98-.56l2.28 1.56a13.6 13.6 0 0 1 3.28-1.36l.32-2.68Z" fill="currentColor"/>
-                <circle cx="20.6" cy="20.7" r="10.2" fill="#ffffff"/>
+                <path class="gear-core" d="M18.5 1.8a2.1 2.1 0 0 1 4.2 0l.32 2.68a13.6 13.6 0 0 1 3.28 1.36l2.28-1.56a2.1 2.1 0 0 1 2.98.56l2.1 3.64a2.1 2.1 0 0 1-.75 2.9l-2.34 1.35c.16.68.24 1.4.29 2.14l2.66.66a2.1 2.1 0 0 1 1.58 2.03v4.22a2.1 2.1 0 0 1-1.58 2.03l-2.66.66c-.05.74-.13 1.46-.29 2.14l2.34 1.35a2.1 2.1 0 0 1 .75 2.9l-2.1 3.64a2.1 2.1 0 0 1-2.98.56l-2.28-1.56a13.6 13.6 0 0 1-3.28 1.36l-.32 2.68a2.1 2.1 0 0 1-4.2 0l-.32-2.68a13.6 13.6 0 0 1-3.28-1.36l-2.28 1.56a2.1 2.1 0 0 1-2.98-.56l-2.1-3.64a2.1 2.1 0 0 1 .75-2.9l2.34-1.35a13.3 13.3 0 0 1-.29-2.14l-2.66-.66A2.1 2.1 0 0 1 2.4 22.8v-4.22a2.1 2.1 0 0 1 1.58-2.03l2.66-.66c.05-.74.13-1.46.29-2.14l-2.34-1.35a2.1 2.1 0 0 1-.75-2.9l2.1-3.64a2.1 2.1 0 0 1 2.98-.56l2.28 1.56a13.6 13.6 0 0 1 3.28-1.36l.32-2.68Z"/>
               </svg>
             </div>
+            <div class="gear-wheel steel right-large">
+              <svg viewBox="0 0 42 42" fill="none">
+                <path class="gear-core" d="M18.5 1.8a2.1 2.1 0 0 1 4.2 0l.32 2.68a13.6 13.6 0 0 1 3.28 1.36l2.28-1.56a2.1 2.1 0 0 1 2.98.56l2.1 3.64a2.1 2.1 0 0 1-.75 2.9l-2.34 1.35c.16.68.24 1.4.29 2.14l2.66.66a2.1 2.1 0 0 1 1.58 2.03v4.22a2.1 2.1 0 0 1-1.58 2.03l-2.66.66c-.05.74-.13 1.46-.29 2.14l2.34 1.35a2.1 2.1 0 0 1 .75 2.9l-2.1 3.64a2.1 2.1 0 0 1-2.98.56l-2.28-1.56a13.6 13.6 0 0 1-3.28 1.36l-.32 2.68a2.1 2.1 0 0 1-4.2 0l-.32-2.68a13.6 13.6 0 0 1-3.28-1.36l-2.28 1.56a2.1 2.1 0 0 1-2.98-.56l-2.1-3.64a2.1 2.1 0 0 1 .75-2.9l2.34-1.35a13.3 13.3 0 0 1-.29-2.14l-2.66-.66A2.1 2.1 0 0 1 2.4 22.8v-4.22a2.1 2.1 0 0 1 1.58-2.03l2.66-.66c.05-.74.13-1.46.29-2.14l-2.34-1.35a2.1 2.1 0 0 1-.75-2.9l2.1-3.64a2.1 2.1 0 0 1 2.98-.56l2.28 1.56a13.6 13.6 0 0 1 3.28-1.36l.32-2.68Z"/>
+              </svg>
+            </div>
+            <div class="gear-wheel silver bottom-left">
+              <svg viewBox="0 0 42 42" fill="none">
+                <path class="gear-core" d="M18.5 1.8a2.1 2.1 0 0 1 4.2 0l.32 2.68a13.6 13.6 0 0 1 3.28 1.36l2.28-1.56a2.1 2.1 0 0 1 2.98.56l2.1 3.64a2.1 2.1 0 0 1-.75 2.9l-2.34 1.35c.16.68.24 1.4.29 2.14l2.66.66a2.1 2.1 0 0 1 1.58 2.03v4.22a2.1 2.1 0 0 1-1.58 2.03l-2.66.66c-.05.74-.13 1.46-.29 2.14l2.34 1.35a2.1 2.1 0 0 1 .75 2.9l-2.1 3.64a2.1 2.1 0 0 1-2.98.56l-2.28-1.56a13.6 13.6 0 0 1-3.28 1.36l-.32 2.68a2.1 2.1 0 0 1-4.2 0l-.32-2.68a13.6 13.6 0 0 1-3.28-1.36l-2.28 1.56a2.1 2.1 0 0 1-2.98-.56l-2.1-3.64a2.1 2.1 0 0 1 .75-2.9l2.34-1.35a13.3 13.3 0 0 1-.29-2.14l-2.66-.66A2.1 2.1 0 0 1 2.4 22.8v-4.22a2.1 2.1 0 0 1 1.58-2.03l2.66-.66c.05-.74.13-1.46.29-2.14l-2.34-1.35a2.1 2.1 0 0 1-.75-2.9l2.1-3.64a2.1 2.1 0 0 1 2.98-.56l2.28 1.56a13.6 13.6 0 0 1 3.28-1.36l.32-2.68Z"/>
+              </svg>
+            </div>
+            <div class="thinking-shadow"></div>
           </div>
           <div>
             <p class="thinking-title">Analyzing case details...</p>
