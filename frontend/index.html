@@ -2063,7 +2063,31 @@
           { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
           { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
           { id: "failureFrequency", label: "Failure frequency", type: "select", options: ["Often", "Sometimes", "Rare", "NA"] },
-          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
+        ],
+        followups: [
+          "Did issue happen at startup, steady run, or shock loading?",
+          "Any recent alignment or installation change before failure started?",
+          "Which side fails first: driver side, driven side, or both?"
+        ]
+      },
+      Bearings: {
+        short: "bearings",
+        icon: "鈿欙笍",
+        brands: ["Regal Rexnord", "SKF", "Lovejoy", "DODGE", "KTR", "Martin", "NIS"],
+        fields: [
+          { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, compressor" },
+          { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. broken, noise, replacement, upgrade" },
+          { id: "existing", label: "Existing brand / model", type: "text", placeholder: "If any" },
+          { id: "type", label: "Coupling type", type: "select", options: ["Gear", "Grid", "Jaw", "Tyre", "Disc", "NA"] },
+          { section: "Operating Conditions" },
+          { id: "load", label: "Load", type: "select", options: ["Light", "Medium", "Heavy", "NA"] },
+          { id: "speed", label: "Speed (RPM)", type: "number", placeholder: "Enter RPM" },
+          { id: "environment", label: "Environment", type: "select", options: ["Outdoor", "Dust", "Oil", "Clean", "NA"] },
+          { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
+          { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
+          { id: "failureFrequency", label: "Failure frequency", type: "select", options: ["Often", "Sometimes", "Rare", "NA"] },
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
           "Did issue happen at startup, steady run, or shock loading?",
@@ -2087,7 +2111,7 @@
           { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
           { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
           { id: "pulleyCondition", label: "Pulley condition", type: "select", options: ["New", "Worn", "NA"] },
-          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
           "When does slip/noise happen most: startup, full load, or after heating up?",
@@ -2111,7 +2135,7 @@
           { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
           { id: "sprocketCondition", label: "Sprocket condition", type: "select", options: ["New", "Worn", "NA"] },
           { id: "lubrication", label: "Lubrication condition", type: "select", options: ["Good", "Poor", "None", "NA"] },
-          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
           "Where is wear highest now: pin-bush, roller, plate, or sprocket teeth?",
@@ -2136,7 +2160,7 @@
           { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
           { id: "condition", label: "Condition", type: "select", options: ["New", "Worn", "Failed", "NA"] },
           { id: "oilCondition", label: "Lubrication condition (oil type / condition)", type: "text", placeholder: "e.g. ISO VG220, dark oil" },
-          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
           "When was last oil change and was contamination observed?",
@@ -2163,7 +2187,7 @@
           { id: "environment", label: "Environment", type: "select", options: ["Dust", "Oil", "Outdoor", "Clean", "NA"] },
           { id: "temperature", label: "Temperature (deg C)", type: "number", placeholder: "Enter temperature" },
           { id: "hours", label: "Running hours (hours/day)", type: "number", placeholder: "Enter daily running hours" },
-          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
           "Trip occurs at startup, high load, or random run time?",
@@ -2181,7 +2205,7 @@
           { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "Main issue/target" },
           { id: "existing", label: "Existing brand / model", type: "text", placeholder: "If any" },
           { id: "operatingCondition", label: "Operating condition", type: "textarea", placeholder: "Load, speed, environment, temperature, hours" },
-          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "Lead time", "NA"] }
+          { id: "priority", label: "Customer priority", type: "select", options: ["Price", "Durability", "Availability", "NA"] }
         ],
         followups: [
           "What is the most critical success metric: uptime, torque, precision, or cost?",
@@ -2193,6 +2217,7 @@
 
     const partHints = {
       Coupling: ["Lovejoy L-series (verify bore/keyway)", "KTR ROTEX (verify hub size/spider hardness)"],
+      Bearings: ["Lovejoy L-series (verify bore/keyway)", "KTR ROTEX (verify hub size/spider hardness)"],
       Belt: ["Optibelt SPA/SPB range (verify section/length)", "Bando timing belt series (verify pitch/width)"],
       Chain: ["DID roller chain (verify pitch/strand)", "Tsubak RS series (verify attachment/length)"],
       Gearbox: ["Motology helical reducer (verify ratio/service factor)", "Regal Rexnord reducer (verify mounting/torque)"],
@@ -2202,6 +2227,17 @@
 
     const mainIssueOptions = {
       Coupling: [
+        "Misalignment",
+        "Element wear or breakage",
+        "Vibration",
+        "Noise",
+        "Overload or shock load",
+        "Frequent failure",
+        "Wrong sizing",
+        "Need replacement / upgrade",
+        "Other"
+      ],
+      Bearings: [
         "Misalignment",
         "Element wear or breakage",
         "Vibration",
