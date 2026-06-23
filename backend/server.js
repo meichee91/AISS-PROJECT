@@ -1239,9 +1239,6 @@ app.post("/api/cases/:caseNumber/expert-review", async (req, res) => {
     if (!allowedStatuses.includes(caseStatus)) {
       return res.status(400).json({ error: "A verified case status is required." });
     }
-    if (!String(body.expertComment || "").trim()) {
-      return res.status(400).json({ error: "Expert comment is required." });
-    }
     if (caseStatus === CASE_STATUS.VERIFIED_CORRECTED && !String(body.correctedRecommendation || "").trim()) {
       return res.status(400).json({ error: "Corrected recommendation is required for Verified - Corrected." });
     }
