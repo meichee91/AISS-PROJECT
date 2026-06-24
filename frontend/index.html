@@ -1704,6 +1704,12 @@
     .review-form textarea {
       min-height: 98px;
       resize: vertical;
+      overflow-y: hidden;
+    }
+
+    #correctedRecommendationArea {
+      min-height: 220px;
+      line-height: 1.55;
     }
 
     .review-grid {
@@ -1840,28 +1846,29 @@
           <label for="industrySelect">Choose industry</label>
           <select id="industrySelect">
             <option value="">Select industry</option>
-            <option value="NA">NA</option>
-            <option value="Food & Beverage">Food & Beverage</option>
-            <option value="Packaging">Packaging</option>
-            <option value="Manufacturing">Manufacturing</option>
-            <option value="Mining & Quarry">Mining & Quarry</option>
-            <option value="Quarry">Quarry</option>
-            <option value="Power Plant">Power Plant</option>
-            <option value="Steel">Steel</option>
-            <option value="Theme Park">Theme Park</option>
-            <option value="Rubber">Rubber</option>
-            <option value="Tobacco">Tobacco</option>
-            <option value="Sugar">Sugar</option>
+            <option value="Automotive">Automotive</option>
             <option value="Concrete">Concrete</option>
-            <option value="Premix">Premix</option>
-            <option value="Palm Oil / Agriculture">Palm Oil / Agriculture</option>
-            <option value="Water Treatment">Water Treatment</option>
+            <option value="Construction">Construction</option>
+            <option value="Food & Beverage">Food & Beverage</option>
             <option value="HVAC / Building Services">HVAC / Building Services</option>
             <option value="Logistics / Conveyor">Logistics / Conveyor</option>
-            <option value="Oil & Gas">Oil & Gas</option>
+            <option value="Manufacturing">Manufacturing</option>
             <option value="Marine">Marine</option>
-            <option value="Construction">Construction</option>
-            <option value="Automotive">Automotive</option>
+            <option value="Mining & Quarry">Mining & Quarry</option>
+            <option value="Oil & Gas">Oil & Gas</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Palm Oil / Agriculture">Palm Oil / Agriculture</option>
+            <option value="Power Plant">Power Plant</option>
+            <option value="Premix">Premix</option>
+            <option value="Quarry">Quarry</option>
+            <option value="Rubber">Rubber</option>
+            <option value="Steel">Steel</option>
+            <option value="Sugar">Sugar</option>
+            <option value="Theme Park">Theme Park</option>
+            <option value="Tobacco">Tobacco</option>
+            <option value="Utilities / Power">Utilities / Power</option>
+            <option value="Water Treatment">Water Treatment</option>
+            <option value="NA">NA</option>
           </select>
         </section>
 
@@ -2108,6 +2115,7 @@
           { id: "application", label: "Machine / Application", type: "text", placeholder: "e.g. conveyor, pump, crusher, fan" },
           { id: "problem", label: "Customer problem / requirement", type: "textarea", placeholder: "e.g. noise, overheating, frequent failure, replacement, upgrade" },
           { id: "existing", label: "Existing brand (customer using now)", type: "select", options: ["SKF", "FAG", "TIMKEN", "INA", "DODGE", "NIS", "THK", "JJ", "SAMICK", "SNB", "TORRINGTON", "Others"] },
+          { id: "existingPartNumber", label: "Existing part number", type: "text", placeholder: "Enter current bearing part number / code" },
           { id: "bearingFamily", label: "Bearing main type", type: "select", options: ["Ball Bearings", "Roller Bearings", "Thrust Bearings", "Track & Guide Bearings", "Linear Bearings", "Other"] },
           {
             id: "type",
@@ -2949,7 +2957,7 @@
             </div>
             <div>
               <label for="correctedRecommendationArea">Final recommendation (editable)</label>
-              <textarea id="correctedRecommendationArea" placeholder="Required when status is Verified - Corrected.">${escapeHtml(editableRecommendation)}</textarea>
+              <textarea id="correctedRecommendationArea" rows="12" placeholder="Required when status is Verified - Corrected.">${escapeHtml(editableRecommendation)}</textarea>
               <div class="review-assist-meta">This is the expert-editable final recommendation. You can revise it directly, or ask AI to draft an updated version first.</div>
             </div>
             <div class="review-assist">
@@ -2962,6 +2970,7 @@
                 <button id="expertAiRegenerateBtn" class="btn-secondary" type="button">Regenerate with AI</button>
                 <button id="expertAiUseDraftBtn" class="btn-secondary" type="button" ${expertAiAssist.draftText ? "" : "disabled"}>Use AI Draft</button>
               </div>
+              <div class="review-assist-meta">Use AI Draft copies the regenerated recommendation into the final recommendation box for your editing.</div>
               <div>
                 <label>AI draft recommendation</label>
                 <div id="expertAiDraftMeta" class="review-assist-meta">${expertAiAssist.updatedAt ? `Generated ${escapeHtml(expertAiAssist.updatedAt)}${expertAiAssist.model ? ` using ${escapeHtml(expertAiAssist.model.toUpperCase())}` : ""}${expertAiAssist.runNote ? ` - ${escapeHtml(expertAiAssist.runNote)}` : ""}` : "No AI draft generated yet."}</div>
@@ -3061,6 +3070,7 @@
         const correctedRecommendationArea = document.getElementById("correctedRecommendationArea");
         if (!correctedRecommendationArea) return;
         correctedRecommendationArea.value = assistState.draftText;
+        autoSizeTextarea(correctedRecommendationArea);
         correctedRecommendationArea.focus();
         refreshReviewerAmendmentPreview();
         addActivity("Expert AI Draft Applied", `${state.activeCaseDetail.caseNumber} draft copied into final recommendation.`);
@@ -3071,6 +3081,7 @@
         el?.addEventListener("input", refreshReviewerAmendmentPreview);
         el?.addEventListener("change", refreshReviewerAmendmentPreview);
       });
+      bindAutoSizeTextareas(caseDetailModal);
     }
 
     async function openCaseDetail(caseNumber) {
@@ -3589,6 +3600,7 @@
       });
       clearFormBtn.addEventListener("click", () => renderForm(categoryName));
       applyDynamicFieldOptions(categoryName);
+      bindAutoSizeTextareas(reqForm);
 
       ["dragenter", "dragover"].forEach((evt) => {
         zone.addEventListener(evt, (event) => {
@@ -4627,6 +4639,7 @@
         `Main issue: ${Array.isArray(formData.mainIssue) ? formData.mainIssue.join(", ") : (formData.mainIssue || "N/A")}`,
         `Customer problem / requirement: ${formData.problem || formData.description || formData.problemDescription || "N/A"}`,
         `Existing brand / model: ${formData.existing || "N/A"}`,
+        ...(formData.existingPartNumber ? [`Existing part number: ${formData.existingPartNumber}`] : []),
         "",
         "B. Problem Understanding",
         item?.aiResponse?.problemUnderstanding || "N/A",
@@ -4723,6 +4736,8 @@
         `Application: ${formData.application || "N/A"}`,
         `Description: ${formData.description || formData.problemDescription || "N/A"}`,
         `Main issue: ${Array.isArray(formData.mainIssue) ? formData.mainIssue.join(", ") : (formData.mainIssue || "N/A")}`,
+        `Existing brand / model: ${formData.existing || "N/A"}`,
+        ...(formData.existingPartNumber ? [`Existing part number: ${formData.existingPartNumber}`] : []),
         "",
         "B. Problem Understanding",
         item?.aiResponse?.problemUnderstanding || "N/A",
@@ -4984,6 +4999,21 @@
       a.download = item.filename;
       a.click();
       addActivity("PDF Downloaded", item.filename);
+    }
+
+    function autoSizeTextarea(el) {
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${Math.max(el.scrollHeight, 120)}px`;
+    }
+
+    function bindAutoSizeTextareas(scope = document) {
+      scope.querySelectorAll("textarea").forEach((el) => {
+        autoSizeTextarea(el);
+        if (el.dataset.autoSizeBound === "true") return;
+        el.addEventListener("input", () => autoSizeTextarea(el));
+        el.dataset.autoSizeBound = "true";
+      });
     }
 
     function blobToBase64(blob) {
