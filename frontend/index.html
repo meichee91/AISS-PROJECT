@@ -1637,6 +1637,85 @@
       color: #1f2937;
     }
 
+    .reviewer-guide {
+      background: linear-gradient(180deg, #fffdfd, #fff8f8);
+      border-color: #edd5d9;
+    }
+
+    .reviewer-guide-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .reviewer-guide-top h4 {
+      font-size: 0.92rem;
+      margin-bottom: 4px;
+    }
+
+    .reviewer-guide-state {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .review-chip {
+      border: 1px solid #ecd7dc;
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #5d6472;
+      white-space: nowrap;
+    }
+
+    .reviewer-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .guide-step {
+      border: 1px solid #eadfe3;
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .guide-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #b31217;
+      color: #fff;
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .guide-step strong {
+      display: block;
+      font-size: 0.78rem;
+      color: #202735;
+      margin-bottom: 3px;
+    }
+
+    .guide-note {
+      font-size: 0.74rem;
+      color: #5e6776;
+      line-height: 1.45;
+    }
+
     .detail-list {
       display: grid;
       gap: 6px;
@@ -1690,6 +1769,37 @@
       gap: 10px;
     }
 
+    .review-section-title {
+      margin: 2px 0 0;
+      font-size: 0.77rem;
+      font-weight: 700;
+      color: #7f1216;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .review-section-note {
+      margin: 4px 0 0;
+      font-size: 0.75rem;
+      color: #667084;
+      line-height: 1.45;
+    }
+
+    .review-block {
+      border: 1px solid #eadfe3;
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .review-block.optional-block,
+    .review-assist.optional-block {
+      border-style: dashed;
+      background: #fffafa;
+    }
+
     .review-form textarea,
     .review-form input,
     .review-form select {
@@ -1739,6 +1849,7 @@
     }
 
     @media (max-width: 1080px) {
+      .reviewer-guide-grid,
       .detail-grid,
       .review-grid,
       .report-toolbar,
@@ -2785,10 +2896,20 @@
       return Array.isArray(item?.aiResponse?.recommendations) ? item.aiResponse.recommendations.filter(Boolean) : [];
     }
 
+    function numberedRecommendationText(lines) {
+      return (Array.isArray(lines) ? lines : [])
+        .filter(Boolean)
+        .map((line, index) => {
+          const text = String(line).trim();
+          return /^\d+\.\s+/.test(text) ? text : `${index + 1}. ${text}`;
+        })
+        .join("\n");
+    }
+
     function editableRecommendationText(item) {
       const existing = String(item?.correctedRecommendation || "").trim();
       if (existing) return existing;
-      return recommendationLinesFromCase(item).join("\n");
+      return numberedRecommendationText(recommendationLinesFromCase(item));
     }
 
     function buildReviewerAmendmentPreviewText(item) {
@@ -2854,7 +2975,7 @@
 
     function formatExpertAiDraft(aiResult) {
       const recommendationLines = Array.isArray(aiResult?.recommendation) ? aiResult.recommendation.filter(Boolean) : [];
-      const lines = recommendationLines.map((line, index) => `${index + 1}. ${line}`);
+      const lines = numberedRecommendationText(recommendationLines).split("\n").filter(Boolean);
       if (aiResult?.reason) {
         if (lines.length) lines.push("");
         lines.push(`Reason: ${aiResult.reason}`);
@@ -2882,6 +3003,49 @@
         model: ""
       };
       caseDetailBody.innerHTML = `
+        <div class="detail-card full reviewer-guide">
+          <div class="reviewer-guide-top">
+            <div>
+              <h4>Reviewer Workflow</h4>
+              <div class="tiny">Use the fast path in order: <strong>1 Review outcome</strong> -> <strong>2.1 Final recommendation</strong> -> <strong>3 Save review</strong> -> <strong>4 Generate or share PDF</strong>. Steps <strong>2.2</strong> and <strong>2.3</strong> are optional helpers only.</div>
+            </div>
+            <div class="reviewer-guide-state">
+              <span class="review-chip">${escapeHtml(item.caseNumber)}</span>
+              <span class="review-chip">${escapeHtml(item.category)}</span>
+              <span class="review-chip">${escapeHtml(item.rating || "Unrated")}</span>
+            </div>
+          </div>
+          <div class="reviewer-guide-grid">
+            <div class="guide-step">
+              <div class="guide-badge">1</div>
+              <div>
+                <strong>Review outcome</strong>
+                <div class="guide-note">Check the case summary and AI evaluation, then choose the final case status first.</div>
+              </div>
+            </div>
+            <div class="guide-step">
+              <div class="guide-badge">2</div>
+              <div>
+                <strong>Final recommendation</strong>
+                <div class="guide-note">Complete 2.1 as the main action. Use 2.2 or 2.3 only if you want to add note or get AI help.</div>
+              </div>
+            </div>
+            <div class="guide-step">
+              <div class="guide-badge">3</div>
+              <div>
+                <strong>Save review</strong>
+                <div class="guide-note">Once the status and final recommendation are ready, save the expert review.</div>
+              </div>
+            </div>
+            <div class="guide-step">
+              <div class="guide-badge">4</div>
+              <div>
+                <strong>Generate / Share PDF</strong>
+                <div class="guide-note">After saving, create the completed-case PDF, then download or share the final customer-ready file.</div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="detail-card">
           <h4>Case Summary</h4>
           <div class="detail-list">
@@ -2904,12 +3068,12 @@
         </div>
         <div class="detail-card full">
           <h4>AI Evaluation</h4>
-          <div class="review-assist-meta">Display only. This mirrors the full original user report so the reviewer can inspect the whole case narrative without editing it here.</div>
+          <div class="review-assist-meta">Display only. Read this as the full original user report and AI case narrative before deciding the final outcome.</div>
           <div class="detail-text-block">${escapeHtml(userPdfLinesFromCaseItem(item).join("\n"))}</div>
         </div>
         <div class="detail-card full">
-          <h4>Original User PDF Actions</h4>
-          <div class="review-assist-meta">Display only. The original user report is shown above for reviewer reference and is not meant to be downloaded from this reviewer page.</div>
+          <h4>Original User Report Reference</h4>
+          <div class="review-assist-meta">Reference only. The full original report is already shown above in AI Evaluation so the reviewer can compare user input, AI output, and final expert amendments in one page.</div>
         </div>
         <div class="detail-card full">
           <h4>Photos and Attachments</h4>
@@ -2918,49 +3082,63 @@
         <div class="detail-card full">
           <h4>Expert Verification</h4>
           <form id="expertReviewForm" class="review-form">
-            <div class="review-grid">
-              <div>
-                <label for="expertDecisionSelect">Final status</label>
-                <select id="expertDecisionSelect">
-                  <option value="${CASE_STATUS.VERIFIED_GOOD}" ${item.caseStatus === CASE_STATUS.VERIFIED_GOOD ? "selected" : ""}>${CASE_STATUS.VERIFIED_GOOD}</option>
-                  <option value="${CASE_STATUS.VERIFIED_CORRECTED}" ${item.caseStatus === CASE_STATUS.VERIFIED_CORRECTED ? "selected" : ""}>${CASE_STATUS.VERIFIED_CORRECTED}</option>
-                  <option value="${CASE_STATUS.VERIFIED_REJECTED}" ${item.caseStatus === CASE_STATUS.VERIFIED_REJECTED ? "selected" : ""}>${CASE_STATUS.VERIFIED_REJECTED}</option>
-                  <option value="${CASE_STATUS.ARCHIVED}" ${item.caseStatus === CASE_STATUS.ARCHIVED ? "selected" : ""}>${CASE_STATUS.ARCHIVED}</option>
-                </select>
-              </div>
-              <div>
-                <label for="expertRatingSelect">Expert rating</label>
-                <select id="expertRatingSelect">
-                  <option value="">Select</option>
-                  <option value="Correct" ${item.expertRating === "Correct" ? "selected" : ""}>Correct</option>
-                  <option value="Partially Correct" ${item.expertRating === "Partially Correct" ? "selected" : ""}>Partially Correct</option>
-                  <option value="Incorrect" ${item.expertRating === "Incorrect" ? "selected" : ""}>Incorrect</option>
-                </select>
-              </div>
-              <div>
-                <label for="knowledgeValueSelect">Knowledge value</label>
-                <select id="knowledgeValueSelect">
-                  <option value="">Select</option>
-                  <option value="High" ${item.knowledgeValue === "High" ? "selected" : ""}>High</option>
-                  <option value="Medium" ${item.knowledgeValue === "Medium" ? "selected" : ""}>Medium</option>
-                  <option value="Low" ${item.knowledgeValue === "Low" ? "selected" : ""}>Low</option>
-                </select>
-              </div>
-              <div>
-                <label for="reviewerNameInput">Reviewer</label>
-                <input id="reviewerNameInput" type="text" value="${escapeHtml(item.reviewerName || "")}" placeholder="Product Expert name" />
+            <div class="review-block">
+              <div class="review-section-title">Step 1 - Review outcome</div>
+              <div class="review-section-note">Set the final case outcome first. This is the main decision that closes the AI review loop.</div>
+              <div class="review-grid">
+                <div>
+                  <label for="expertDecisionSelect">Final status</label>
+                  <select id="expertDecisionSelect">
+                    <option value="${CASE_STATUS.VERIFIED_GOOD}" ${item.caseStatus === CASE_STATUS.VERIFIED_GOOD ? "selected" : ""}>${CASE_STATUS.VERIFIED_GOOD}</option>
+                    <option value="${CASE_STATUS.VERIFIED_CORRECTED}" ${item.caseStatus === CASE_STATUS.VERIFIED_CORRECTED ? "selected" : ""}>${CASE_STATUS.VERIFIED_CORRECTED}</option>
+                    <option value="${CASE_STATUS.VERIFIED_REJECTED}" ${item.caseStatus === CASE_STATUS.VERIFIED_REJECTED ? "selected" : ""}>${CASE_STATUS.VERIFIED_REJECTED}</option>
+                    <option value="${CASE_STATUS.ARCHIVED}" ${item.caseStatus === CASE_STATUS.ARCHIVED ? "selected" : ""}>${CASE_STATUS.ARCHIVED}</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="expertRatingSelect">Expert rating (optional)</label>
+                  <select id="expertRatingSelect">
+                    <option value="">Select</option>
+                    <option value="Correct" ${item.expertRating === "Correct" ? "selected" : ""}>Correct</option>
+                    <option value="Partially Correct" ${item.expertRating === "Partially Correct" ? "selected" : ""}>Partially Correct</option>
+                    <option value="Incorrect" ${item.expertRating === "Incorrect" ? "selected" : ""}>Incorrect</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="knowledgeValueSelect">Knowledge value (optional)</label>
+                  <select id="knowledgeValueSelect">
+                    <option value="">Select</option>
+                    <option value="High" ${item.knowledgeValue === "High" ? "selected" : ""}>High</option>
+                    <option value="Medium" ${item.knowledgeValue === "Medium" ? "selected" : ""}>Medium</option>
+                    <option value="Low" ${item.knowledgeValue === "Low" ? "selected" : ""}>Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="reviewerNameInput">Reviewer (optional)</label>
+                  <input id="reviewerNameInput" type="text" value="${escapeHtml(item.reviewerName || "")}" placeholder="Product Expert name" />
+                </div>
               </div>
             </div>
-            <div>
-              <label for="expertCommentArea">Expert comment (optional)</label>
-              <textarea id="expertCommentArea" placeholder="Optional: explain the technical verification, concern, or decision reason.">${escapeHtml(item.expertComment || "")}</textarea>
+            <div class="review-block">
+              <div class="review-section-title">Step 2.1 - Final recommendation</div>
+              <div class="review-section-note">This is the main review action after Step 1. Edit this box if you want the final reviewed answer to differ from the original AI output. This field must be filled if the final status is <strong>${CASE_STATUS.VERIFIED_CORRECTED}</strong>.</div>
+              <div>
+                <label for="correctedRecommendationArea">Final recommendation (editable)</label>
+                <textarea id="correctedRecommendationArea" rows="12" placeholder="Required when status is Verified - Corrected.">${escapeHtml(editableRecommendation)}</textarea>
+                <div class="review-assist-meta">This is the final reviewer-controlled recommendation that appears in the completed case output.</div>
+              </div>
             </div>
-            <div>
-              <label for="correctedRecommendationArea">Final recommendation (editable)</label>
-              <textarea id="correctedRecommendationArea" rows="12" placeholder="Required when status is Verified - Corrected.">${escapeHtml(editableRecommendation)}</textarea>
-              <div class="review-assist-meta">This is the expert-editable final recommendation. You can revise it directly, or ask AI to draft an updated version first.</div>
+            <div class="review-block optional-block">
+              <div class="review-section-title">Step 2.2 - Optional reviewer note</div>
+              <div class="review-section-note">Use this only if the reviewer wants to explain the decision or leave internal reasoning. You can skip this and go straight to Step 3.</div>
+              <div>
+                <label for="expertCommentArea">Expert comment (optional)</label>
+                <textarea id="expertCommentArea" placeholder="Optional: explain the technical verification, concern, or decision reason.">${escapeHtml(item.expertComment || "")}</textarea>
+              </div>
             </div>
-            <div class="review-assist">
+            <div class="review-assist optional-block">
+              <div class="review-section-title">Step 2.3 - Optional AI assist</div>
+              <div class="review-section-note">Use this only if the reviewer wants help rewriting the recommendation. Regenerate a draft here, then copy it into Step 2.1 for final editing.</div>
               <div>
                 <label for="expertAiPromptArea">Optional message to AI before regenerate</label>
                 <textarea id="expertAiPromptArea" placeholder="Example: Focus on dust contamination and recommend a more practical replacement note for customer sharing.">${escapeHtml(expertAiAssist.prompt || "")}</textarea>
@@ -2977,13 +3155,17 @@
                 <div id="expertAiDraftText" class="detail-text-block">${escapeHtml(expertAiAssist.draftText || "No AI draft generated yet.")}</div>
               </div>
             </div>
-            <div class="btn-row">
+            <div class="review-block">
+              <div class="review-section-title">Step 3 - Save review</div>
+              <div class="review-section-note">Save once Step 1 and Step 2.1 are ready. Steps 2.2 and 2.3 can stay unused.</div>
+              <div class="btn-row">
               <button id="saveExpertReviewBtn" class="btn-primary" type="submit">Save Expert Review</button>
+              </div>
             </div>
           </form>
         </div>
         <div class="detail-card full">
-          <h4>Completed Case PDF</h4>
+          <h4>Step 4 - Generate / Share Completed Case PDF</h4>
           <div class="detail-list">
             <div><strong>SQL folder path:</strong> ${escapeHtml(completedCase?.sqlFolderPath || "Will be created after expert review save")}</div>
             <div><strong>SharePoint library:</strong> ${escapeHtml(completedCase?.sharePointLibrary || state.appConfig?.sharePointLibrary || "AISS")}</div>
@@ -2991,49 +3173,28 @@
             <div><strong>Upload status:</strong> ${escapeHtml(completedCase?.uploadStatus || "pending")}</div>
             <div><strong>SharePoint file URL:</strong> ${completedCase?.sharePointFileUrl ? `<a href="${escapeHtml(completedCase.sharePointFileUrl)}" target="_blank" rel="noreferrer">Open file</a>` : "Pending upload"}</div>
           </div>
-          <div class="review-assist-meta" style="margin-top:12px;">Live preview of what the reviewer has amended so far. This updates when the reviewer edits the final recommendation, adds comment, changes reviewer name, or applies an AI draft.</div>
+          <div class="review-assist-meta" style="margin-top:12px;">After expert review is saved, use this section to generate the customer-facing completed PDF. The preview below updates live as the reviewer edits the recommendation, note, name, rating, or applies an AI draft.</div>
           <div class="detail-text-block" id="reviewerAmendmentPreview">${escapeHtml(buildReviewerAmendmentPreviewText(item))}</div>
           <div class="btn-row" style="margin-top:12px;">
-            <button id="completedPdfBtn" class="btn-secondary" type="button">${hasCompletedCase ? "Regenerate Completed PDF" : "Generate Completed PDF"}</button>
-            <button id="completedDownloadBtn" class="btn-secondary" type="button" ${hasCompletedCase ? "" : "disabled"}>Download Completed PDF</button>
-            <button id="completedShareBtn" class="btn-primary" type="button" ${hasCompletedCase ? "" : "disabled"}>Share Completed PDF</button>
+            <button id="completedDownloadBtn" class="btn-secondary" type="button">Download Completed PDF</button>
+            <button id="completedShareBtn" class="btn-primary" type="button">Share Completed PDF</button>
           </div>
         </div>
       `;
       caseDetailModal.classList.add("active");
       caseDetailModal.setAttribute("aria-hidden", "false");
       document.getElementById("expertReviewForm")?.addEventListener("submit", saveExpertReview);
-      document.getElementById("completedPdfBtn")?.addEventListener("click", async () => {
-        const pdfItem = await buildCompletedPdfItem(state.activeCaseDetail);
-        if (!pdfItem) {
-          showUserMessage("Completed case PDF could not be generated right now.");
-          return;
-        }
-        state.completedPdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
-        pushHistory(pdfItem);
-        addActivity("Completed PDF Generated", pdfItem.filename);
-        if (state.appConfig?.sharePointUploadEnabled) {
-          try {
-            const uploadResult = await uploadCompletedPdfToSharePoint(state.activeCaseDetail, pdfItem);
-            if (uploadResult?.item) {
-              state.activeCaseDetail = uploadResult.item;
-              showCaseDetail(state.activeCaseDetail);
-            }
-            showUserMessage(uploadResult?.sharePointFileUrl
-              ? "Completed PDF uploaded to SharePoint successfully."
-              : "Completed PDF generated.");
-          } catch (err) {
-            showUserMessage(err?.message || "Completed PDF was generated, but SharePoint upload failed.");
-          }
-        }
-        document.getElementById("completedDownloadBtn")?.removeAttribute("disabled");
-        document.getElementById("completedShareBtn")?.removeAttribute("disabled");
-      });
-      document.getElementById("completedDownloadBtn")?.addEventListener("click", () => {
+      document.getElementById("completedDownloadBtn")?.addEventListener("click", async () => {
         let pdfItem = state.completedPdfCache[state.activeCaseDetail.caseNumber];
         if (!pdfItem) {
-          showUserMessage("Generate the completed PDF first in this browser session.");
-          return;
+          pdfItem = await buildCompletedPdfItem(state.activeCaseDetail);
+          if (!pdfItem) {
+            showUserMessage("Completed case PDF could not be generated right now.");
+            return;
+          }
+          state.completedPdfCache[state.activeCaseDetail.caseNumber] = pdfItem;
+          pushHistory(pdfItem);
+          addActivity("Completed PDF Generated", pdfItem.filename);
         }
         downloadPdf(pdfItem);
       });
@@ -3134,7 +3295,7 @@
         renderCaseDetail(data.item);
         await refreshCaseReport();
         await refreshOpsSummary();
-        showUserMessage(`Expert review completed. ${completedPdf ? "Completed PDF is ready for download or share." : "You can now generate the completed PDF."}`);
+        showUserMessage("Expert review completed. Completed PDF is ready for download or share.");
       } catch (err) {
         showUserMessage(err.message, "Expert review could not be saved right now.");
       }
