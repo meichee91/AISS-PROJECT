@@ -3058,7 +3058,7 @@
             showUserMessage(err?.message || "SharePoint upload failed. Continuing with external share.");
           }
         }
-        await sharePdf(pdfItem);
+        showSharePanel(pdfItem);
       });
       document.getElementById("expertAiRegenerateBtn")?.addEventListener("click", regenerateExpertAiDraft);
       document.getElementById("expertAiUseDraftBtn")?.addEventListener("click", () => {
@@ -5128,10 +5128,14 @@
     function openWhatsAppShare(item) {
       const text = shareTextFor(item);
       window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+      if (item?.blob && item?.filename) {
+        downloadPdf(item);
+      }
       addActivity("WhatsApp Opened", item.filename);
       if (shareNote) {
-        shareNote.textContent = "WhatsApp Web can receive the recommendation text. To attach the PDF file itself, use Share PDF on a browser/device that supports file sharing, or download the PDF and attach it manually.";
+        shareNote.textContent = "WhatsApp Web opened with the case details and case link. The PDF was also downloaded so you can attach it in the same chat.";
       }
+      closeSharePanel();
     }
 
     function openEmailShare(item) {
@@ -5155,8 +5159,8 @@
         ? "Share the PDF through your browser share sheet."
         : "PDF file sharing is not supported by this browser.";
       shareNote.textContent = canShare
-        ? "Choose Share PDF to send the generated PDF through a supported external app."
-        : "This browser cannot attach a generated PDF directly to WhatsApp Web. WhatsApp can be opened with the recommendation text.";
+        ? "For a WhatsApp-style result with details, case link, and PDF, use the WhatsApp button. Use Share PDF for supported native file sharing."
+        : "This browser cannot attach a generated PDF directly through native share. Use WhatsApp to open the message text and download the PDF for attachment.";
       sharePanel.classList.add("active");
     }
 
@@ -5358,7 +5362,7 @@
       }
       pushHistory(item);
       addActivity("PDF Generated", item.filename);
-      await sharePdf(item);
+      showSharePanel(item);
     });
 
     historyList.addEventListener("click", (event) => {
